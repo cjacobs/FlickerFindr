@@ -14,6 +14,9 @@
 		44A1A3152B5F0A1500DAB24F /* FlickerFindrTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3142B5F0A1500DAB24F /* FlickerFindrTests.swift */; };
 		44A1A31F2B5F0A1500DAB24F /* FlickerFindrUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A31E2B5F0A1500DAB24F /* FlickerFindrUITests.swift */; };
 		44A1A3212B5F0A1500DAB24F /* FlickerFindrUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3202B5F0A1500DAB24F /* FlickerFindrUITestsLaunchTests.swift */; };
+		44A1A3362B5F50E200DAB24F /* FrameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3352B5F50E200DAB24F /* FrameView.swift */; };
+		44A1A3382B5F517100DAB24F /* FrameHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3372B5F517100DAB24F /* FrameHandler.swift */; };
+		44A1A33A2B62F60B00DAB24F /* PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3392B62F60B00DAB24F /* PreviewView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +47,9 @@
 		44A1A31A2B5F0A1500DAB24F /* FlickerFindrUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FlickerFindrUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		44A1A31E2B5F0A1500DAB24F /* FlickerFindrUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlickerFindrUITests.swift; sourceTree = "<group>"; };
 		44A1A3202B5F0A1500DAB24F /* FlickerFindrUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlickerFindrUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		44A1A3352B5F50E200DAB24F /* FrameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameView.swift; sourceTree = "<group>"; };
+		44A1A3372B5F517100DAB24F /* FrameHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameHandler.swift; sourceTree = "<group>"; };
+		44A1A3392B62F60B00DAB24F /* PreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,8 +100,11 @@
 		44A1A3022B5F0A1200DAB24F /* FlickerFindr */ = {
 			isa = PBXGroup;
 			children = (
-				44A1A3032B5F0A1200DAB24F /* FlickerFindrApp.swift */,
 				44A1A3052B5F0A1200DAB24F /* ContentView.swift */,
+				44A1A3032B5F0A1200DAB24F /* FlickerFindrApp.swift */,
+				44A1A3372B5F517100DAB24F /* FrameHandler.swift */,
+				44A1A3352B5F50E200DAB24F /* FrameView.swift */,
+				44A1A3392B62F60B00DAB24F /* PreviewView.swift */,
 				44A1A3072B5F0A1400DAB24F /* Assets.xcassets */,
 				44A1A3092B5F0A1400DAB24F /* Preview Content */,
 			);
@@ -257,6 +266,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				44A1A33A2B62F60B00DAB24F /* PreviewView.swift in Sources */,
+				44A1A3382B5F517100DAB24F /* FrameHandler.swift in Sources */,
+				44A1A3362B5F50E200DAB24F /* FrameView.swift in Sources */,
 				44A1A3062B5F0A1200DAB24F /* ContentView.swift in Sources */,
 				44A1A3042B5F0A1200DAB24F /* FlickerFindrApp.swift in Sources */,
 			);
@@ -425,6 +437,7 @@
 				DEVELOPMENT_TEAM = RSHH8JAP2K;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access required";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -454,6 +467,7 @@
 				DEVELOPMENT_TEAM = RSHH8JAP2K;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access required";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

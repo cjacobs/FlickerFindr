@@ -8,14 +8,24 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var model = FrameHandler()
+
     var body: some View {
         VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+            HStack {
+                Text(String(describing: model.fps))
+            }
+
+            HStack
+            {
+                FrameView(image: model.frame)
+                    .ignoresSafeArea()
+            }
+
+            HStack {
+                Text("Controls")
+            }
         }
-        .padding()
     }
 }
 
