@@ -63,6 +63,8 @@ class FrameHandler: NSObject, ObservableObject {
     }
 
     func setupCaptureSession() {
+        captureSession.sessionPreset = .inputPriority
+
         let videoOutput = AVCaptureVideoDataOutput()
 
         guard permissionGranted else { return }
@@ -70,7 +72,7 @@ class FrameHandler: NSObject, ObservableObject {
         guard let videoDevice = AVCaptureDevice.default(for: AVMediaType.video)
         else { return }
 
-        //        configureCameraForHighestFrameRate(device: videoDevice)
+                configureCameraForHighestFrameRate(device: videoDevice)
         switchFormatWithDesiredFPS(device: videoDevice, desiredFPS: 240.0)
 
         guard
@@ -161,6 +163,7 @@ class FrameHandler: NSObject, ObservableObject {
         if let selectedFormat {
             do {
                 try device.lockForConfiguration()
+                defer {device.unlockForConfiguration()}
                 print("desiredFPS: \(String(describing: desiredFPS))")
                 print("format: \(String(describing: selectedFormat))")
                 print("frameRateRange: \(String(describing: frameRateRange))")
@@ -171,7 +174,7 @@ class FrameHandler: NSObject, ObservableObject {
                     frameRateRange!.minFrameDuration
                 device.activeVideoMaxFrameDuration =
                     frameRateRange!.maxFrameDuration
-                device.unlockForConfiguration()
+                
             } catch {
                 print("ERROR in switchFormatWithDesiredFPS")
                 // handle error
@@ -196,6 +199,7 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         let period = prevCaptureTime.distance(to: captureTime)
         prevCaptureTime = captureTime
         let currFPS = Float(1 / period)
+        self.fps = currFPS
 //        print("capture fps: \(String (describing: currFPS))")
 
         // All UI updates should be/ must be performed on the main queue.

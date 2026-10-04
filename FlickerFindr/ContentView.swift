@@ -8,19 +8,17 @@
 import SwiftUI
 
 struct ContentView: View {
-//    @StateObject private var model = FrameHandler()
+    @StateObject private var model = FrameHandler()
 
     var body: some View {
         VStack {
             HStack {
-//                Text(String(describing: model.fps))
+                Text(String(describing: model.fps))
             }
 
             HStack
             {
-                HostedViewController().ignoresSafeArea()
-//                FrameView(image: model.frame).ignoresSafeArea()
-                    
+                FrameView(image: model.frame).ignoresSafeArea()                    
             }
 
             HStack {
