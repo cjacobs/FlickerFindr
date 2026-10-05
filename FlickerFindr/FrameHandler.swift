@@ -117,12 +117,14 @@ class FrameHandler: NSObject, ObservableObject {
             do {
                 try device.lockForConfiguration()
                 let duration = bestFrameRateRange.minFrameDuration
+                defer {
+                    device.unlockForConfiguration()
+                }
 
                 device.activeFormat = bestFormat
                 device.activeVideoMinFrameDuration = duration
                 device.activeVideoMaxFrameDuration = duration
 
-                device.unlockForConfiguration()
             } catch {
                 print("ERROR in configureCameraForHighestFrameRate")
                 // Handle error.
@@ -215,13 +217,12 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
                 )
             else { return }
 
-            let currentLightLevel = averageFrac2(processedImage) ?? 0
+            let currentLightLevel = averageBrightness(processedImage) ?? 0
             defer { prevLightLevel = currentLightLevel }
             let diff = abs(currentLightLevel - prevLightLevel)
             print(diff)
 
             if diff > 0.05 {
-
                 let displayImage = processedImage
 
                 guard
@@ -282,30 +283,7 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         return output
     }
 
-    func averageFrac(_ image: CIImage) -> Float? {
-        let cropVector = CIVector(cgRect: image.extent)
-
-        guard
-            let filter = CIFilter(
-                name: "CIAreaAverage",
-                parameters: [
-                    kCIInputImageKey: image, kCIInputExtentKey: cropVector,
-                ]
-            ),
-            let outputImage = filter.outputImage,
-            let cgImage = context.createCGImage(
-                outputImage,
-                from: CGRect(x: 0, y: 0, width: 1, height: 1)
-            ),
-            let dataProvider = cgImage.dataProvider,
-            let data = CFDataGetBytePtr(dataProvider.data)
-        else { return nil }
-
-        // assuming we're in LUV space, so just use luminance component
-        return Float(data[0]) / 255
-    }
-
-    func averageFrac2(_ image: CIImage) -> Float? {
+    func averageBrightness(_ image: CIImage) -> Float? {
         let cropVector = CIVector(cgRect: image.extent)
 
         let outputImage = image.applyingFilter(
