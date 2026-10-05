@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var model = FrameHandler()
+    @State private var model = FrameHandler()
 
     var body: some View {
         ZStack

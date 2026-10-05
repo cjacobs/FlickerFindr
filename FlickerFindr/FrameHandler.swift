@@ -10,19 +10,20 @@
 import AVFoundation
 import CoreImage
 
-class FrameHandler: NSObject, ObservableObject {
-    @Published var frame: CGImage?
-    @Published var fps: Float = 0.0
-    @Published var processFps: Float = 0.0
-    @Published var droppedCount = 0
+@Observable class FrameHandler: NSObject {
+    var frame: CGImage? = nil
+    var fps: Float = 0.0
+    var processFps: Float = 0.0
+    var droppedCount = 0
 
     var prevFrame: CIImage? = nil
     var droppedFrames = 0
 
     var prevFrameDifference: Float = 0.0
     var prevLightLevel: Float = 0.0
+    var availableDevices:
+    [(device: AVCaptureDevice, format: AVCaptureDevice.Format, frameRate:AVFrameRateRange)] = []
 
-    //    private var capturedFrame: CGImage? = nil
     private var prevCaptureTime = Date()
     private var prevProcessTime = Date()
     private var count = 0
