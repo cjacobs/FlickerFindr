@@ -20,6 +20,7 @@ class FrameHandler: NSObject, ObservableObject {
     var droppedFrames = 0
 
     var prevFrameDifference: Float = 0.0
+    var prevLightLevel: Float = 0.0
 
     //    private var capturedFrame: CGImage? = nil
     private var prevCaptureTime = Date()
@@ -202,7 +203,10 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
                 let ciImage = imageFromSampleBuffer(sampleBuffer: sampleBuffer)
             else { return }
             defer { self.prevFrame = ciImage }
-            
+
+            //            let processedImage = ciImage
+            //                .convertingWorkingSpaceToLab()
+
             guard let prevImage = prevFrame else { return }
             guard
                 let processedImage = subtractImages(
@@ -210,23 +214,26 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
                     background: prevImage
                 )
             else { return }
-            
-            // TODO: maybe get an overall brightness value for each frame and compare that (instead of comparing the images directly)
-            // or maybe blur the frames before comparing
-            if let diffAmt = averageFrac(processedImage) {
-                print(diffAmt)
-            }
-            
 
-            guard
-                let cgImage = context.createCGImage(
-                    processedImage,
-                    from: processedImage.extent
-                )
-            else { return }
+            let currentLightLevel = averageFrac2(processedImage) ?? 0
+            defer { prevLightLevel = currentLightLevel }
+            let diff = abs(currentLightLevel - prevLightLevel)
+            print(diff)
 
-            DispatchQueue.main.async { [unowned self] in
-                self.frame = cgImage
+            if diff > 0.05 {
+
+                let displayImage = processedImage
+
+                guard
+                    let cgImage = context.createCGImage(
+                        displayImage,
+                        from: displayImage.extent
+                    )
+                else { return }
+
+                DispatchQueue.main.async { [unowned self] in
+                    self.frame = cgImage
+                }
             }
         }
 
@@ -274,66 +281,6 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         )
         return output
     }
-    //
-    //    func averageArea(inputImage: CIImage) -> CIImage {
-    //        let filter = CIFilter.areaAverage()
-    //        filter.inputImage = inputImage
-    //        filter.extent = CGRect(
-    //            x: inputImage.extent.width/2-250,
-    //            y: inputImage.extent.height/2-250,
-    //            width: 500,
-    //            height: 500)
-    //        return filter.outputImage!
-    //    }
-    //
-    //    func averageColor() -> UIColor? {
-    //
-    //            // cgImage is required as it gives the CoreGraphics representation of the UIImage instance
-    //            guard let cgImage = self.cgImage else { return nil }
-    //
-    //            // to reduce the entire image into a single image of size 1pixel x 1pixel (not points but pixels)
-    //            // (CGContext works in terms of pixels and not points)
-    //            let width = 1
-    //            let height = 1
-    //
-    //            // Unsafe: because CGContext requires unsafe pointers as it interfaces with C-based APIs that don't support Swift's memory safety
-    //            // Mutable because the CGContext writes the pixel data into the buffer
-    //            // Capacity 4: because Each component (R, G, B, A) requires 1 byte (8 bits).
-    //            let bitmapData = UnsafeMutablePointer<CUnsignedChar>.allocate(capacity: 4)
-    //
-    //            // We want the bitmapData to always be deallocated after the function runs
-    //            defer { bitmapData.deallocate() }
-    //
-    //            // https://developer.apple.com/documentation/coregraphics/cgcontext/1455939-init
-    //            let context = CGContext(data: bitmapData,
-    //                                    // Width & height is set to 1 because there is only one pixel in the bitmap.
-    //                                    width: width,
-    //                                    height: height,
-    //                                    // // Each component (R, G, B, A) is represented using 8 bits
-    //                                    bitsPerComponent: 8,
-    //                                    // 4 bytes per row because each pixel requires 4 bytes (1 byte for each RGBA component)
-    //                                    bytesPerRow: 4,
-    //                                    // Creates a device-dependent RGB color space.
-    //                                    // https://developer.apple.com/documentation/coregraphics/1408837-cgcolorspacecreatedevicergb
-    //                                    space: CGColorSpaceCreateDeviceRGB(),
-    //                                    // Specifies that the pixel data is in RGBA format with alpha premultiplied and stored as the last component
-    //                                    // https://developer.apple.com/documentation/coregraphics/cgimagealphainfo
-    //                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-    //
-    //            // https://developer.apple.com/documentation/coregraphics/cgcontext/2427126-draw
-    //            // The contents are scaled, if necessary, to fit into the rectangle.
-    //            context?.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-    //
-    //            // Normalizing to a range of 0...1
-    //            let red = CGFloat(bitmapData[0]) / 255.0
-    //            let green = CGFloat(bitmapData[1]) / 255.0
-    //            let blue = CGFloat(bitmapData[2]) / 255.0
-    //            let alpha = CGFloat(bitmapData[3]) / 255.0
-    //
-    //            // Returning UIColor
-    //            return UIColor(red: red, green: green, blue: blue, alpha: alpha)
-    //        }
-    //    }
 
     func averageFrac(_ image: CIImage) -> Float? {
         let cropVector = CIVector(cgRect: image.extent)
@@ -354,14 +301,30 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
             let data = CFDataGetBytePtr(dataProvider.data)
         else { return nil }
 
-//        let color = CGColor(
-//            red: CGFloat(data[0]) / 255,
-//            green: CGFloat(data[1]) / 255,
-//            blue: CGFloat(data[2]) / 255,
-//            alpha: CGFloat(data[3]) / 255
-//        )
-//        return color
-        
-        return Float(data[1]) / 255
+        // assuming we're in LUV space, so just use luminance component
+        return Float(data[0]) / 255
     }
+
+    func averageFrac2(_ image: CIImage) -> Float? {
+        let cropVector = CIVector(cgRect: image.extent)
+
+        let outputImage = image.applyingFilter(
+            "CIAreaAverage",
+            parameters: [
+                kCIInputImageKey: image, kCIInputExtentKey: cropVector,
+            ]
+        )
+
+        guard
+            let cgImage = context.createCGImage(
+                outputImage,
+                from: CGRect(x: 0, y: 0, width: 1, height: 1)
+            ),
+            let dataProvider = cgImage.dataProvider,
+            let data = CFDataGetBytePtr(dataProvider.data)
+        else { return nil }
+
+        return Float(data[0]) / 255
+    }
+
 }
