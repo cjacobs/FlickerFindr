@@ -22,7 +22,15 @@ import CoreImage
     var prevFrameDifference: Float = 0.0
     var prevLightLevel: Float = 0.0
     var availableDevices:
-    [(device: AVCaptureDevice, format: AVCaptureDevice.Format, frameRate:AVFrameRateRange)] = []
+        [(
+            device: AVCaptureDevice, format: AVCaptureDevice.Format,
+            frameRate: AVFrameRateRange
+        )] = []
+    var availableDeviceNames: Set<String>{
+        Set(availableDevices.map {
+            $0.device.localizedName
+        })
+    }
 
     private var prevCaptureTime = Date()
     private var prevProcessTime = Date()
@@ -74,16 +82,86 @@ import CoreImage
         let videoOutput = AVCaptureVideoDataOutput()
 
         guard permissionGranted else { return }
-        guard let videoDevice = AVCaptureDevice.default(for: AVMediaType.video)
-        else { return }
+        //        guard let videoDevice = AVCaptureDevice.default(for: AVMediaType.video)
+        //        else { return }
 
-        // TODO: combine these 2 functions
-        configureCameraForHighestFrameRate(device: videoDevice)
-        switchFormatWithDesiredFPS(device: videoDevice, desiredFPS: 240.0)
+        let cameraTypes: [AVCaptureDevice.DeviceType] = [
+            .builtInWideAngleCamera,
+            .builtInUltraWideCamera,
+            .builtInTelephotoCamera,
+            .builtInDualCamera,  // Wide + Telephoto combo
+            .builtInDualWideCamera,  // Wide + UltraWide combo
+            .builtInTripleCamera,  // UltraWide + Wide + Telephoto combo
+        ]
+
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: cameraTypes,
+            mediaType: .video,
+            position: .back
+        )
+
+        let devices = discoverySession.devices
+        guard !devices.isEmpty else { fatalError("Missing capture devices.") }
+
+        availableDevices = []
+
+        // TODO: factor this out into getAvailableDevices or something
+        let desiredFPS: Double = 120
+        for device in devices {
+            for format in device.formats {
+                if let goodRange = format.videoSupportedFrameRateRanges.first(
+                    where: {
+                        $0.minFrameRate <= desiredFPS
+                            && desiredFPS <= $0.maxFrameRate
+                    })
+                {
+                    availableDevices.append(
+                        (device: device, format: format, frameRate: goodRange)
+                    )
+
+                }
+
+                //                for range in format.videoSupportedFrameRateRanges {
+                //                    if range.minFrameRate <= desiredFPS
+                //                        && desiredFPS <= range.maxFrameRate
+                //                    {
+                //                        availableDevices.append(
+                //                            (device: device, format: format, frameRate: range)
+                //                        )
+                //                    }
+            }
+        }
+
+        guard !availableDevices.isEmpty else {
+            fatalError("Missing adequate capture devices.")
+        }
+
+        let device = availableDevices.first!.device
+        let format = availableDevices.first!.format
+        let range = availableDevices.first!.frameRate
+        print(range)
+        print(format)
+        do {
+            try device.lockForConfiguration()
+            defer { device.unlockForConfiguration() }
+
+            device.activeFormat = format
+            device.activeVideoMinFrameDuration =
+                range.minFrameDuration
+            device.activeVideoMaxFrameDuration =
+                range.minFrameDuration
+
+        } catch {
+            print("ERROR in switchFormatWithDesiredFPS")
+            // handle error
+        }
+
+        print(device.activeVideoMaxFrameDuration)
+        print(device.activeVideoMinFrameDuration)
 
         guard
             let videoDeviceInput = try? AVCaptureDeviceInput(
-                device: videoDevice
+                device: device
             )
         else { return }
         guard captureSession.canAddInput(videoDeviceInput) else { return }
@@ -98,85 +176,11 @@ import CoreImage
         captureSession.addOutput(videoOutput)
         videoOutput.connection(with: .video)?.videoRotationAngle = 90.0
     }
-
-    func configureCameraForHighestFrameRate(device: AVCaptureDevice) {
-        var bestFormat: AVCaptureDevice.Format?
-        var bestFrameRateRange: AVFrameRateRange?
-
-        for format in device.formats {
-            for range in format.videoSupportedFrameRateRanges {
-                if range.maxFrameRate > bestFrameRateRange?.maxFrameRate ?? 0 {
-                    bestFormat = format
-                    bestFrameRateRange = range
-                }
-            }
-        }
-
-        if let bestFormat = bestFormat,
-            let bestFrameRateRange = bestFrameRateRange
-        {
-            do {
-                try device.lockForConfiguration()
-                let duration = bestFrameRateRange.minFrameDuration
-                defer {
-                    device.unlockForConfiguration()
-                }
-
-                device.activeFormat = bestFormat
-                device.activeVideoMinFrameDuration = duration
-                device.activeVideoMaxFrameDuration = duration
-
-            } catch {
-                print("ERROR in configureCameraForHighestFrameRate")
-                // Handle error.
-            }
-        }
-    }
-
-    func switchFormatWithDesiredFPS(device: AVCaptureDevice, desiredFPS: Float)
-    {
-        var selectedFormat: AVCaptureDevice.Format? = nil
-        let maxWidth = 0
-        var frameRateRange: AVFrameRateRange? = nil
-
-        for format in device.formats {
-            for range in format.videoSupportedFrameRateRanges {
-
-                let desc = format.formatDescription
-                let dimensions = CMVideoFormatDescriptionGetDimensions(desc)
-                let width = Int(dimensions.width)
-
-                if Float(range.minFrameRate) <= desiredFPS
-                    && desiredFPS <= Float(range.maxFrameRate)
-                    && width >= maxWidth
-                {
-                    selectedFormat = format
-                    frameRateRange = range
-                    //                    maxWidth = width;
-                }
-            }
-        }
-
-        if let selectedFormat {
-            do {
-                try device.lockForConfiguration()
-                defer { device.unlockForConfiguration() }
-
-                device.activeFormat = selectedFormat
-                device.activeVideoMinFrameDuration =
-                    frameRateRange!.minFrameDuration
-                device.activeVideoMaxFrameDuration =
-                    frameRateRange!.maxFrameDuration
-
-            } catch {
-                print("ERROR in switchFormatWithDesiredFPS")
-                // handle error
-            }
-        }
-    }
 }
 
+//
 // AVCaptureVideoDataOutputSampleBufferDelegate protocol
+//
 extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(
         _ output: AVCaptureOutput,
@@ -221,7 +225,7 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
             let currentLightLevel = averageBrightness(processedImage) ?? 0
             defer { prevLightLevel = currentLightLevel }
             let diff = abs(currentLightLevel - prevLightLevel)
-            print(diff)
+            //            print(diff)
 
             if diff > 0.05 {
                 let displayImage = processedImage
@@ -303,7 +307,8 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
             let data = CFDataGetBytePtr(dataProvider.data)
         else { return nil }
 
-        return Float(data[0]) / 255
+        // TODO: convert RGB to Luminance
+        return Float(data[1]) / 255
     }
 
 }

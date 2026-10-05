@@ -11,8 +11,7 @@ struct ContentView: View {
     @State private var model = FrameHandler()
 
     var body: some View {
-        ZStack
-        {
+        ZStack {
             HStack {
                 FrameView(image: model.frame).ignoresSafeArea()
             }.onAppear { model.start() }
@@ -25,11 +24,16 @@ struct ContentView: View {
                     Spacer()
                     Text(String(describing: model.processFps))
                 }
-                
+
                 Spacer()
 
                 HStack {
-                    Text("Controls")
+
+                    Text("# devices: \(model.availableDevices.count)")
+                    List(Array(model.availableDeviceNames), id: \.self) { name in
+                        Text(name)
+                    }
+
                 }
             }
         }
