@@ -13,15 +13,19 @@ import CoreImage
 class FrameHandler: NSObject, ObservableObject {
     @Published var frame: CGImage?
     @Published var fps: Float = 0.0
+    @Published var processFps: Float = 0.0
+    @Published var droppedCount = 0
+
+    var prevFrame: CIImage? = nil
+    var droppedFrames = 0
 
     var prevFrameDifference: Float = 0.0
 
     //    private var capturedFrame: CGImage? = nil
     private var prevCaptureTime = Date()
-    private var prevDisplayTime = Date()
+    private var prevProcessTime = Date()
     private var count = 0
-    private let maxFrames = 10
-    private var droppedFrames = 0
+    private let maxFrames = 1
 
     private var permissionGranted = false
     private let captureSession = AVCaptureSession()
@@ -30,7 +34,9 @@ class FrameHandler: NSObject, ObservableObject {
 
     override init() {
         super.init()
+    }
 
+    func start() {
         self.checkPermission()
         sessionQueue.async { [unowned self] in
             self.setupCaptureSession()
@@ -39,18 +45,14 @@ class FrameHandler: NSObject, ObservableObject {
     }
 
     func checkPermission() {
-        print("checking permission")
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:  // The user has previously granted access to the camera.
-            print("authorized")
             self.permissionGranted = true
 
         case .notDetermined:  // The user has not yet been asked for camera access.
-            print("requesting")
             self.requestPermission()
         // Combine the two other cases into the default case
         default:
-            print("no")
             self.permissionGranted = false
         }
     }
@@ -63,16 +65,18 @@ class FrameHandler: NSObject, ObservableObject {
     }
 
     func setupCaptureSession() {
+        captureSession.beginConfiguration()
+        defer { captureSession.commitConfiguration() }
         captureSession.sessionPreset = .inputPriority
 
         let videoOutput = AVCaptureVideoDataOutput()
 
         guard permissionGranted else { return }
-        //        guard let videoDevice = AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: .back) else { return }
         guard let videoDevice = AVCaptureDevice.default(for: AVMediaType.video)
         else { return }
 
-                configureCameraForHighestFrameRate(device: videoDevice)
+        // TODO: combine these 2 functions
+        configureCameraForHighestFrameRate(device: videoDevice)
         switchFormatWithDesiredFPS(device: videoDevice, desiredFPS: 240.0)
 
         guard
@@ -82,15 +86,14 @@ class FrameHandler: NSObject, ObservableObject {
         else { return }
         guard captureSession.canAddInput(videoDeviceInput) else { return }
 
-        //        captureSession.beginConfiguration()
         captureSession.addInput(videoDeviceInput)
         videoOutput.setSampleBufferDelegate(
             self,
             queue: DispatchQueue(label: "sampleBufferQueue")
         )
         //        videoOutput.alwaysDiscardsLateVideoFrames = false
+        guard captureSession.canAddOutput(videoOutput) else { return }
         captureSession.addOutput(videoOutput)
-        //        captureSession.commitConfiguration()
         videoOutput.connection(with: .video)?.videoRotationAngle = 90.0
     }
 
@@ -103,9 +106,6 @@ class FrameHandler: NSObject, ObservableObject {
                 if range.maxFrameRate > bestFrameRateRange?.maxFrameRate ?? 0 {
                     bestFormat = format
                     bestFrameRateRange = range
-                    print(
-                        "Current best framerate range: \(String(describing: bestFrameRateRange))"
-                    )
                 }
             }
         }
@@ -116,7 +116,6 @@ class FrameHandler: NSObject, ObservableObject {
             do {
                 try device.lockForConfiguration()
                 let duration = bestFrameRateRange.minFrameDuration
-                print("Best frame duration: \(String(describing: duration))")
 
                 device.activeFormat = bestFormat
                 device.activeVideoMinFrameDuration = duration
@@ -132,12 +131,6 @@ class FrameHandler: NSObject, ObservableObject {
 
     func switchFormatWithDesiredFPS(device: AVCaptureDevice, desiredFPS: Float)
     {
-        //        let isRunning = captureSession.isRunning
-        //        if (isRunning)
-        //        {
-        //            captureSession.stopRunning()
-        //        }
-
         var selectedFormat: AVCaptureDevice.Format? = nil
         let maxWidth = 0
         var frameRateRange: AVFrameRateRange? = nil
@@ -163,28 +156,19 @@ class FrameHandler: NSObject, ObservableObject {
         if let selectedFormat {
             do {
                 try device.lockForConfiguration()
-                defer {device.unlockForConfiguration()}
-                print("desiredFPS: \(String(describing: desiredFPS))")
-                print("format: \(String(describing: selectedFormat))")
-                print("frameRateRange: \(String(describing: frameRateRange))")
-                print("max width: \(String (describing: maxWidth))")
+                defer { device.unlockForConfiguration() }
 
                 device.activeFormat = selectedFormat
                 device.activeVideoMinFrameDuration =
                     frameRateRange!.minFrameDuration
                 device.activeVideoMaxFrameDuration =
                     frameRateRange!.maxFrameDuration
-                
+
             } catch {
                 print("ERROR in switchFormatWithDesiredFPS")
                 // handle error
             }
         }
-
-        //        if (isRunning)
-        //        {
-        //            captureSession.startRunning();
-        //        }
     }
 }
 
@@ -198,43 +182,52 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         let captureTime = Date()
         let period = prevCaptureTime.distance(to: captureTime)
         prevCaptureTime = captureTime
-        let currFPS = Float(1 / period)
-        self.fps = currFPS
-//        print("capture fps: \(String (describing: currFPS))")
+
+        let captureFPS = Float(1 / period)
 
         // All UI updates should be/ must be performed on the main queue.
+        DispatchQueue.main.async { [unowned self] in
+            self.fps = captureFPS
+        }
+
         if count == 0 {
-            let period = prevDisplayTime.distance(to: captureTime)
-            prevDisplayTime = captureTime
-            let currFPS = Float(1 / period)
-//            print("display fps: \(String (describing: currFPS))")
+            let period = prevProcessTime.distance(to: captureTime)
+            prevProcessTime = captureTime
+            let processFPS = Float(1 / period)
+            DispatchQueue.main.async { [unowned self] in
+                self.processFps = processFPS
+            }
 
             guard
-                let cgImage = imageFromSampleBuffer(sampleBuffer: sampleBuffer)
+                let ciImage = imageFromSampleBuffer(sampleBuffer: sampleBuffer)
             else { return }
+            defer { self.prevFrame = ciImage }
+            
+            guard let prevImage = prevFrame else { return }
+            guard
+                let processedImage = subtractImages(
+                    foreground: ciImage,
+                    background: prevImage
+                )
+            else { return }
+            
+            // TODO: maybe get an overall brightness value for each frame and compare that (instead of comparing the images directly)
+            // or maybe blur the frames before comparing
+            if let diffAmt = averageFrac(processedImage) {
+                print(diffAmt)
+            }
+            
+
+            guard
+                let cgImage = context.createCGImage(
+                    processedImage,
+                    from: processedImage.extent
+                )
+            else { return }
+
             DispatchQueue.main.async { [unowned self] in
                 self.frame = cgImage
-                //                if (self.frame == nil)
-                //                {
-                //                    self.frame = cgImage
-                //                }
-                //                else
-                //                {
-                //                    self.frame = self.capturedFrame
-                //                }
-                self.prevFrameDifference = 0
             }
-        } else {
-            //            // diff cgImage and prevFrame, and see if the new one is worse than the last one
-            //            if (self.frame != nil)
-            //            {
-            //                let diff = imageDifference(cgImage, self.frame!)
-            //                if (diff >= self.prevFrameDifference)
-            //                {
-            //                    self.capturedFrame = cgImage
-            //                    self.prevFrameDifference = diff
-            //                }
-            //            }
         }
 
         count = (count + 1) % maxFrames
@@ -248,27 +241,127 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         from connection: AVCaptureConnection
     ) {
         self.droppedFrames += 1
-        var mode: CMAttachmentMode = 0
-        let reason = CMGetAttachment(
-            sampleBuffer,
-            key: kCMSampleBufferAttachmentKey_DroppedFrameReason,
-            attachmentModeOut: &mode
-        )
-        print(
-            "reason \(String(describing: reason)), mode: \(String(describing: mode))"
-        )  // Optional(OutOfBuffers)
+        DispatchQueue.main.async { [unowned self] in
+            self.droppedCount = droppedFrames
+        }
+
+        //        let reason = CMGetAttachment(
+        //            sampleBuffer,
+        //            key: kCMSampleBufferAttachmentKey_DroppedFrameReason,
+        //            attachmentModeOut: nil
+        //        )
+
+        // reasons seen:
+        // Optional(FrameWasLate)
+        // Optional(OutOfBuffers)
     }
 
     // NOTE: look at alwaysDiscardsLateVideoFrames property
 
-    private func imageFromSampleBuffer(sampleBuffer: CMSampleBuffer) -> CGImage?
+    private func imageFromSampleBuffer(sampleBuffer: CMSampleBuffer) -> CIImage?
     {
-        guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
+        guard let imageBuffer = sampleBuffer.imageBuffer
         else { return nil }
         let ciImage = CIImage(cvPixelBuffer: imageBuffer)
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent)
+        return ciImage
+    }
+
+    func subtractImages(foreground: CIImage, background: CIImage) -> CIImage? {
+        let filter = CIBlendKernel.difference
+        let output = filter.apply(
+            foreground: foreground,
+            background: background
+        )
+        return output
+    }
+    //
+    //    func averageArea(inputImage: CIImage) -> CIImage {
+    //        let filter = CIFilter.areaAverage()
+    //        filter.inputImage = inputImage
+    //        filter.extent = CGRect(
+    //            x: inputImage.extent.width/2-250,
+    //            y: inputImage.extent.height/2-250,
+    //            width: 500,
+    //            height: 500)
+    //        return filter.outputImage!
+    //    }
+    //
+    //    func averageColor() -> UIColor? {
+    //
+    //            // cgImage is required as it gives the CoreGraphics representation of the UIImage instance
+    //            guard let cgImage = self.cgImage else { return nil }
+    //
+    //            // to reduce the entire image into a single image of size 1pixel x 1pixel (not points but pixels)
+    //            // (CGContext works in terms of pixels and not points)
+    //            let width = 1
+    //            let height = 1
+    //
+    //            // Unsafe: because CGContext requires unsafe pointers as it interfaces with C-based APIs that don't support Swift's memory safety
+    //            // Mutable because the CGContext writes the pixel data into the buffer
+    //            // Capacity 4: because Each component (R, G, B, A) requires 1 byte (8 bits).
+    //            let bitmapData = UnsafeMutablePointer<CUnsignedChar>.allocate(capacity: 4)
+    //
+    //            // We want the bitmapData to always be deallocated after the function runs
+    //            defer { bitmapData.deallocate() }
+    //
+    //            // https://developer.apple.com/documentation/coregraphics/cgcontext/1455939-init
+    //            let context = CGContext(data: bitmapData,
+    //                                    // Width & height is set to 1 because there is only one pixel in the bitmap.
+    //                                    width: width,
+    //                                    height: height,
+    //                                    // // Each component (R, G, B, A) is represented using 8 bits
+    //                                    bitsPerComponent: 8,
+    //                                    // 4 bytes per row because each pixel requires 4 bytes (1 byte for each RGBA component)
+    //                                    bytesPerRow: 4,
+    //                                    // Creates a device-dependent RGB color space.
+    //                                    // https://developer.apple.com/documentation/coregraphics/1408837-cgcolorspacecreatedevicergb
+    //                                    space: CGColorSpaceCreateDeviceRGB(),
+    //                                    // Specifies that the pixel data is in RGBA format with alpha premultiplied and stored as the last component
+    //                                    // https://developer.apple.com/documentation/coregraphics/cgimagealphainfo
+    //                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    //
+    //            // https://developer.apple.com/documentation/coregraphics/cgcontext/2427126-draw
+    //            // The contents are scaled, if necessary, to fit into the rectangle.
+    //            context?.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+    //
+    //            // Normalizing to a range of 0...1
+    //            let red = CGFloat(bitmapData[0]) / 255.0
+    //            let green = CGFloat(bitmapData[1]) / 255.0
+    //            let blue = CGFloat(bitmapData[2]) / 255.0
+    //            let alpha = CGFloat(bitmapData[3]) / 255.0
+    //
+    //            // Returning UIColor
+    //            return UIColor(red: red, green: green, blue: blue, alpha: alpha)
+    //        }
+    //    }
+
+    func averageFrac(_ image: CIImage) -> Float? {
+        let cropVector = CIVector(cgRect: image.extent)
+
+        guard
+            let filter = CIFilter(
+                name: "CIAreaAverage",
+                parameters: [
+                    kCIInputImageKey: image, kCIInputExtentKey: cropVector,
+                ]
+            ),
+            let outputImage = filter.outputImage,
+            let cgImage = context.createCGImage(
+                outputImage,
+                from: CGRect(x: 0, y: 0, width: 1, height: 1)
+            ),
+            let dataProvider = cgImage.dataProvider,
+            let data = CFDataGetBytePtr(dataProvider.data)
         else { return nil }
 
-        return cgImage
+//        let color = CGColor(
+//            red: CGFloat(data[0]) / 255,
+//            green: CGFloat(data[1]) / 255,
+//            blue: CGFloat(data[2]) / 255,
+//            alpha: CGFloat(data[3]) / 255
+//        )
+//        return color
+        
+        return Float(data[1]) / 255
     }
 }

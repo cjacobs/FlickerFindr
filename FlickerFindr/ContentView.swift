@@ -11,18 +11,26 @@ struct ContentView: View {
     @StateObject private var model = FrameHandler()
 
     var body: some View {
-        VStack {
+        ZStack
+        {
             HStack {
-                Text(String(describing: model.fps))
-            }
+                FrameView(image: model.frame).ignoresSafeArea()
+            }.onAppear { model.start() }
 
-            HStack
-            {
-                FrameView(image: model.frame).ignoresSafeArea()                    
-            }
+            VStack {
+                HStack {
+                    Text(String(describing: model.fps))
+                    Spacer()
+                    Text(String(describing: model.droppedCount))
+                    Spacer()
+                    Text(String(describing: model.processFps))
+                }
+                
+                Spacer()
 
-            HStack {
-                Text("Controls")
+                HStack {
+                    Text("Controls")
+                }
             }
         }
     }
@@ -31,4 +39,3 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-
