@@ -9,6 +9,7 @@
 
 import AVFoundation
 import CoreImage
+import Foundation
 
 @Observable class FrameHandler: NSObject {
     var frame: CGImage? = nil
@@ -21,15 +22,14 @@ import CoreImage
 
     var prevFrameDifference: Float = 0.0
     var prevLightLevel: Float = 0.0
-    var availableDevices:
-        [(
-            device: AVCaptureDevice, format: AVCaptureDevice.Format,
-            frameRate: AVFrameRateRange
-        )] = []
-    var availableDeviceNames: Set<String>{
-        Set(availableDevices.map {
-            $0.device.localizedName
-        })
+    var availableDeviceMap:
+        [AVCaptureDevice: [(
+            format: AVCaptureDevice.Format, frameRate: AVFrameRateRange
+        )]] = [:]
+
+
+    var availableDeviceNames: [String] {
+        availableDeviceMap.keys.map { $0.localizedName}
     }
 
     private var prevCaptureTime = Date()
@@ -103,7 +103,7 @@ import CoreImage
         let devices = discoverySession.devices
         guard !devices.isEmpty else { fatalError("Missing capture devices.") }
 
-        availableDevices = []
+        availableDeviceMap = [:]
 
         // TODO: factor this out into getAvailableDevices or something
         let desiredFPS: Double = 120
@@ -115,30 +115,21 @@ import CoreImage
                             && desiredFPS <= $0.maxFrameRate
                     })
                 {
-                    availableDevices.append(
-                        (device: device, format: format, frameRate: goodRange)
+                    availableDeviceMap[device, default: []].append(
+                        (format: format, frameRate: goodRange)
                     )
-
                 }
-
-                //                for range in format.videoSupportedFrameRateRanges {
-                //                    if range.minFrameRate <= desiredFPS
-                //                        && desiredFPS <= range.maxFrameRate
-                //                    {
-                //                        availableDevices.append(
-                //                            (device: device, format: format, frameRate: range)
-                //                        )
-                //                    }
             }
         }
 
-        guard !availableDevices.isEmpty else {
+        guard !availableDeviceMap.isEmpty else {
             fatalError("Missing adequate capture devices.")
         }
 
-        let device = availableDevices.first!.device
-        let format = availableDevices.first!.format
-        let range = availableDevices.first!.frameRate
+        let entry = availableDeviceMap.first!
+        let device = entry.key
+        let format = entry.value.first!.format
+        let range = entry.value.first!.frameRate
         print(range)
         print(format)
         do {
@@ -312,3 +303,9 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
 }
+//
+//extension AVCaptureDevice: Hashable {
+//    func hash(into hasher: inout Hasher) {
+//        hasher.combine(x)
+//        hasher.combine(y)
+//    }
