@@ -9,27 +9,35 @@
 
 import AVFoundation
 import CoreImage
+import CoreImage.CIFilterBuiltins
 import Foundation
 
 @Observable class FrameHandler: NSObject {
     var frame: CGImage? = nil
     var fps: Float = 0.0
     var processFps: Float = 0.0
-    var droppedCount = 0
+    var desiredFps: Double = 240
+    let visibleTimeSpan: TimeInterval = 1
+    var droppedFrames: TimeIntervalList<Int>
+    var frameDiffValues: TimeIntervalList<Float>
 
-    var prevFrame: CIImage? = nil
-    var droppedFrames = 0
+    var blurRadius: Float = 20
+    private var prevProcessedFrame: CIImage? = nil
+    private var prevDisplayFrame: CIImage? = nil
+    private var prevLightLevel: Float = 0.0
+    private let temporalFilter = FrameFilter(
+        coeff1: CGFloat(0.4),
+        coeff2: CGFloat(0.6)
+    )
 
-    var prevFrameDifference: Float = 0.0
-    var prevLightLevel: Float = 0.0
-    var availableDeviceMap:
-        [AVCaptureDevice: [(
-            format: AVCaptureDevice.Format, frameRate: AVFrameRateRange
-        )]] = [:]
+    typealias DeviceMap = [AVCaptureDevice: [(
+        format: AVCaptureDevice.Format, frameRate: AVFrameRateRange
+    )]]
 
+    var availableDeviceMap: DeviceMap = [:]
 
     var availableDeviceNames: [String] {
-        availableDeviceMap.keys.map { $0.localizedName}
+        availableDeviceMap.keys.map { $0.localizedName }
     }
 
     private var prevCaptureTime = Date()
@@ -43,13 +51,15 @@ import Foundation
     private let context = CIContext()
 
     override init() {
+        self.droppedFrames = TimeIntervalList<Int>(span: 1.0)
+        self.frameDiffValues = TimeIntervalList<Float>(span: 1.0)
         super.init()
     }
 
     func start() {
         self.checkPermission()
         sessionQueue.async { [unowned self] in
-            self.setupCaptureSession()
+            self.setUpCaptureSession()
             self.captureSession.startRunning()
         }
     }
@@ -61,6 +71,7 @@ import Foundation
 
         case .notDetermined:  // The user has not yet been asked for camera access.
             self.requestPermission()
+
         // Combine the two other cases into the default case
         default:
             self.permissionGranted = false
@@ -74,17 +85,76 @@ import Foundation
         }
     }
 
-    func setupCaptureSession() {
+    
+    // AVCaptureVideoStabilizationMode.lowLatency
+    func setUpCaptureSession() {
+        guard permissionGranted else { return }
+
+        availableDeviceMap = discoverDevices()
+        if availableDeviceMap.isEmpty { return }
+
+        let videoOutput = AVCaptureVideoDataOutput()
+
         captureSession.beginConfiguration()
         defer { captureSession.commitConfiguration() }
         captureSession.sessionPreset = .inputPriority
 
-        let videoOutput = AVCaptureVideoDataOutput()
+        let entry = availableDeviceMap.first!
+        let device = entry.key
+        let format = entry.value.first!.format
+        let range = entry.value.first!.frameRate
 
-        guard permissionGranted else { return }
-        //        guard let videoDevice = AVCaptureDevice.default(for: AVMediaType.video)
-        //        else { return }
+        do {
+            try device.lockForConfiguration()
+            defer { device.unlockForConfiguration() }
+            
+            device.activeFormat = format
 
+            //            let desiredFrameDuration = 1 / desiredFps
+            //            device.activeVideoMinFrameDuration = CMTime(
+            //                seconds: desiredFrameDuration,
+            //                preferredTimescale: range.minFrameDuration.timescale
+            //            )
+            //            device.activeVideoMaxFrameDuration = CMTime(
+            //                seconds: desiredFrameDuration,
+            //                preferredTimescale: range.maxFrameDuration.timescale
+            //            )
+
+            device.activeVideoMinFrameDuration =
+                range.minFrameDuration
+            device.activeVideoMaxFrameDuration =
+                range.maxFrameDuration
+
+        } catch {
+            print("ERROR in switchFormatWithDesiredFPS")
+            // handle error
+        }
+
+        guard
+            let videoDeviceInput = try? AVCaptureDeviceInput(
+                device: device
+            )
+        else { return }
+        guard captureSession.canAddInput(videoDeviceInput) else { return }
+        captureSession.addInput(videoDeviceInput)
+        videoOutput.setSampleBufferDelegate(
+            self,
+            queue: DispatchQueue(label: "sampleBufferQueue")
+        )
+        //        videoOutput.alwaysDiscardsLateVideoFrames = false
+        guard captureSession.canAddOutput(videoOutput) else { return }
+        captureSession.addOutput(videoOutput)
+        
+        let connection = videoOutput.connection(with: .video)
+        guard let connection else {return}
+        connection.videoRotationAngle = 90.0
+        if connection.isVideoStabilizationSupported {
+            print("Stabilization, baby!")
+            connection.preferredVideoStabilizationMode = .lowLatency
+        }
+    }
+
+    func discoverDevices() -> DeviceMap{
         let cameraTypes: [AVCaptureDevice.DeviceType] = [
             .builtInWideAngleCamera,
             .builtInUltraWideCamera,
@@ -106,13 +176,12 @@ import Foundation
         availableDeviceMap = [:]
 
         // TODO: factor this out into getAvailableDevices or something
-        let desiredFPS: Double = 120
         for device in devices {
             for format in device.formats {
                 if let goodRange = format.videoSupportedFrameRateRanges.first(
                     where: {
-                        $0.minFrameRate <= desiredFPS
-                            && desiredFPS <= $0.maxFrameRate
+                        $0.minFrameRate <= desiredFps
+                            && desiredFps <= $0.maxFrameRate
                     })
                 {
                     availableDeviceMap[device, default: []].append(
@@ -125,157 +194,73 @@ import Foundation
         guard !availableDeviceMap.isEmpty else {
             fatalError("Missing adequate capture devices.")
         }
+        return availableDeviceMap
+    }
+    
+    func filterDisplayFrame(frame: CIImage, mask: CIImage) -> CIImage {
+        let multFilter = CIBlendKernel.componentMultiply
+        let output = multFilter.apply(foreground: frame, background: mask)!
+        return temporalFilter.processFrame(frame: output)
+    }
 
-        let entry = availableDeviceMap.first!
-        let device = entry.key
-        let format = entry.value.first!.format
-        let range = entry.value.first!.frameRate
-        print(range)
-        print(format)
-        do {
-            try device.lockForConfiguration()
-            defer { device.unlockForConfiguration() }
+    // difference value between 2 processed images
+    func imageDifference(image: CIImage, image2: CIImage) -> CIImage? {
+        let diffFilter = CIFilter.colorAbsoluteDifference()
+        diffFilter.inputImage = image
+        diffFilter.inputImage2 = image2
+        let diffImage = diffFilter.outputImage!
 
-            device.activeFormat = format
-            device.activeVideoMinFrameDuration =
-                range.minFrameDuration
-            device.activeVideoMaxFrameDuration =
-                range.minFrameDuration
+        let maxFilter = CIBlendKernel.componentMax
+        let maxImage = maxFilter.apply(foreground: image, background: image2)!
 
-        } catch {
-            print("ERROR in switchFormatWithDesiredFPS")
-            // handle error
-        }
-
-        print(device.activeVideoMaxFrameDuration)
-        print(device.activeVideoMinFrameDuration)
-
-        guard
-            let videoDeviceInput = try? AVCaptureDeviceInput(
-                device: device
+        let divisorConst: CGFloat = 0.2
+        let constImage = CIImage(
+            color: CIColor(
+                red: divisorConst,
+                green: divisorConst,
+                blue: divisorConst
             )
-        else { return }
-        guard captureSession.canAddInput(videoDeviceInput) else { return }
+        ).cropped(to: maxImage.extent)
+        let addFilter = CIBlendKernel.componentAdd
+        let divisorImage = addFilter.apply(
+            foreground: maxImage,
+            background: constImage
+        )!
 
-        captureSession.addInput(videoDeviceInput)
-        videoOutput.setSampleBufferDelegate(
-            self,
-            queue: DispatchQueue(label: "sampleBufferQueue")
+        let divideFilter = CIBlendKernel.divide  // bg / fg
+        let divideImage = divideFilter.apply(
+            foreground: divisorImage,
+            background: diffImage
         )
-        //        videoOutput.alwaysDiscardsLateVideoFrames = false
-        guard captureSession.canAddOutput(videoOutput) else { return }
-        captureSession.addOutput(videoOutput)
-        videoOutput.connection(with: .video)?.videoRotationAngle = 90.0
-    }
-}
 
-//
-// AVCaptureVideoDataOutputSampleBufferDelegate protocol
-//
-extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
-    func captureOutput(
-        _ output: AVCaptureOutput,
-        didOutput sampleBuffer: CMSampleBuffer,
-        from connection: AVCaptureConnection
-    ) {
-        let captureTime = Date()
-        let period = prevCaptureTime.distance(to: captureTime)
-        prevCaptureTime = captureTime
-
-        let captureFPS = Float(1 / period)
-
-        // All UI updates should be/ must be performed on the main queue.
-        DispatchQueue.main.async { [unowned self] in
-            self.fps = captureFPS
-        }
-
-        if count == 0 {
-            let period = prevProcessTime.distance(to: captureTime)
-            prevProcessTime = captureTime
-            let processFPS = Float(1 / period)
-            DispatchQueue.main.async { [unowned self] in
-                self.processFps = processFPS
-            }
-
-            guard
-                let ciImage = imageFromSampleBuffer(sampleBuffer: sampleBuffer)
-            else { return }
-            defer { self.prevFrame = ciImage }
-
-            //            let processedImage = ciImage
-            //                .convertingWorkingSpaceToLab()
-
-            guard let prevImage = prevFrame else { return }
-            guard
-                let processedImage = subtractImages(
-                    foreground: ciImage,
-                    background: prevImage
-                )
-            else { return }
-
-            let currentLightLevel = averageBrightness(processedImage) ?? 0
-            defer { prevLightLevel = currentLightLevel }
-            let diff = abs(currentLightLevel - prevLightLevel)
-            //            print(diff)
-
-            if diff > 0.05 {
-                let displayImage = processedImage
-
-                guard
-                    let cgImage = context.createCGImage(
-                        displayImage,
-                        from: displayImage.extent
-                    )
-                else { return }
-
-                DispatchQueue.main.async { [unowned self] in
-                    self.frame = cgImage
-                }
-            }
-        }
-
-        count = (count + 1) % maxFrames
-
-        //                self.frameDuration = sampleBuffer.duration // of type CMTime
+        return divideImage
     }
 
-    func captureOutput(
-        _ output: AVCaptureOutput,
-        didDrop sampleBuffer: CMSampleBuffer,
-        from connection: AVCaptureConnection
-    ) {
-        self.droppedFrames += 1
-        DispatchQueue.main.async { [unowned self] in
-            self.droppedCount = droppedFrames
-        }
+    // preprocessing images before they're differenced
+    func preprocessFrame(_ image: CIImage, blurRadius: Float = 2) -> CIImage {
+        let falseColorFilter = CIFilter.falseColor()
+        falseColorFilter.color0 = .black
+        falseColorFilter.color1 = .white
+        falseColorFilter.inputImage = image
 
-        //        let reason = CMGetAttachment(
-        //            sampleBuffer,
-        //            key: kCMSampleBufferAttachmentKey_DroppedFrameReason,
-        //            attachmentModeOut: nil
-        //        )
-
-        // reasons seen:
-        // Optional(FrameWasLate)
-        // Optional(OutOfBuffers)
-    }
-
-    // NOTE: look at alwaysDiscardsLateVideoFrames property
-
-    private func imageFromSampleBuffer(sampleBuffer: CMSampleBuffer) -> CIImage?
-    {
-        guard let imageBuffer = sampleBuffer.imageBuffer
-        else { return nil }
-        let ciImage = CIImage(cvPixelBuffer: imageBuffer)
-        return ciImage
-    }
-
-    func subtractImages(foreground: CIImage, background: CIImage) -> CIImage? {
-        let filter = CIBlendKernel.difference
-        let output = filter.apply(
-            foreground: foreground,
-            background: background
+        let grayscale = falseColorFilter.outputImage!
+        let gray = grayscale.applyingFilter(
+            "CIGaussianBlur",
+            parameters: [
+                kCIInputRadiusKey: NSNumber(value: blurRadius)
+            ]
+        ).cropped(
+            to: grayscale.extent.insetBy(
+                dx: CGFloat(blurRadius),
+                dy: CGFloat(blurRadius)
+            )
         )
+
+        let gamma = CIFilter.gammaAdjust()
+        gamma.inputImage = gray
+        gamma.power = 4
+
+        let output = gamma.outputImage!
         return output
     }
 
@@ -303,9 +288,105 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
 }
+
 //
-//extension AVCaptureDevice: Hashable {
-//    func hash(into hasher: inout Hasher) {
-//        hasher.combine(x)
-//        hasher.combine(y)
-//    }
+// AVCaptureVideoDataOutputSampleBufferDelegate protocol
+//
+extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
+    //
+    // Captured a frame handler
+    //
+    func captureOutput(
+        _ output: AVCaptureOutput,
+        didOutput sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
+        let captureTime = Date.now
+        let capturePeriod = prevCaptureTime.distance(to: captureTime)
+        prevCaptureTime = captureTime
+        let captureFPS = Float(1 / capturePeriod)
+
+        // set per-frame state
+        DispatchQueue.main.async { [unowned self] in
+            self.fps = captureFPS
+        }
+
+        defer { count = (count + 1) % maxFrames }
+
+        if count > 0 { return }
+        let processPeriod = prevProcessTime.distance(to: captureTime)
+        prevProcessTime = captureTime
+        let processFPS = Float(1 / processPeriod)
+        DispatchQueue.main.async { [unowned self] in
+            self.processFps = processFPS
+        }
+
+        guard let imageBuffer = sampleBuffer.imageBuffer?.copy() ?? nil
+        else { return }
+
+        //        let frameDuration = sampleBuffer.duration
+
+        let inputImage = CIImage(cvPixelBuffer: imageBuffer)
+
+        let processedFrame = preprocessFrame(
+            inputImage,
+            blurRadius: self.blurRadius
+        )
+        defer { self.prevProcessedFrame = processedFrame }
+
+        guard let prevProcessedFrame else { return }
+
+        let maskImage = imageDifference(
+            image: processedFrame,
+            image2: prevProcessedFrame
+        )
+
+        guard let maskImage else { return }
+
+        let currentLightLevel = averageBrightness(maskImage) ?? 0
+        defer { prevLightLevel = currentLightLevel }
+        let diff = abs(currentLightLevel - prevLightLevel)
+        self.frameDiffValues.append(diff, t: captureTime)
+
+        let displayFrame = filterDisplayFrame(
+            frame: inputImage,
+            mask: maskImage
+        )
+
+        guard
+            let cgImage = context.createCGImage(
+                displayFrame,
+                from: displayFrame.extent
+            )
+        else { return }
+
+        DispatchQueue.main.async { [unowned self] in
+            self.frame = cgImage
+        }
+
+    }
+
+    //
+    // Dropped frame handler
+    //
+    func captureOutput(
+        _ output: AVCaptureOutput,
+        didDrop sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
+        DispatchQueue.main.async { [unowned self] in
+            self.droppedFrames.append(1)
+        }
+
+        /*
+        let reason = CMGetAttachment(
+            sampleBuffer,
+            key: kCMSampleBufferAttachmentKey_DroppedFrameReason,
+            attachmentModeOut: nil
+        )
+        print(
+            "reason \(String(describing: reason))"
+        )
+         */
+    }
+}

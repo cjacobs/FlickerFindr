@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4415C48A3075E7BB00218BBD /* RingBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C4893075E7BB00218BBD /* RingBuffer.swift */; };
+		4415C48C3075E7C400218BBD /* Histogram.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C48B3075E7C400218BBD /* Histogram.swift */; };
+		4415C48E3075E7CC00218BBD /* HistogramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C48D3075E7CC00218BBD /* HistogramView.swift */; };
+		4415C4903076BBAD00218BBD /* TimeIntervalList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C48F3076BBAD00218BBD /* TimeIntervalList.swift */; };
+		4415C494307960F600218BBD /* FrameFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C493307960F600218BBD /* FrameFilter.swift */; };
+		4415C4963079735600218BBD /* CVPixelBufferExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C4953079735600218BBD /* CVPixelBufferExtension.swift */; };
 		44A1A3042B5F0A1200DAB24F /* FlickerFindrApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3032B5F0A1200DAB24F /* FlickerFindrApp.swift */; };
 		44A1A3062B5F0A1200DAB24F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3052B5F0A1200DAB24F /* ContentView.swift */; };
 		44A1A3082B5F0A1400DAB24F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 44A1A3072B5F0A1400DAB24F /* Assets.xcassets */; };
@@ -36,6 +42,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		4415C4893075E7BB00218BBD /* RingBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBuffer.swift; sourceTree = "<group>"; };
+		4415C48B3075E7C400218BBD /* Histogram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Histogram.swift; sourceTree = "<group>"; };
+		4415C48D3075E7CC00218BBD /* HistogramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistogramView.swift; sourceTree = "<group>"; };
+		4415C48F3076BBAD00218BBD /* TimeIntervalList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeIntervalList.swift; sourceTree = "<group>"; };
+		4415C493307960F600218BBD /* FrameFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameFilter.swift; sourceTree = "<group>"; };
+		4415C4953079735600218BBD /* CVPixelBufferExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CVPixelBufferExtension.swift; sourceTree = "<group>"; };
 		44A1A3002B5F0A1200DAB24F /* FlickerFindr.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlickerFindr.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		44A1A3032B5F0A1200DAB24F /* FlickerFindrApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlickerFindrApp.swift; sourceTree = "<group>"; };
 		44A1A3052B5F0A1200DAB24F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -79,6 +91,28 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		4415C4913076C78900218BBD /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				44A1A3052B5F0A1200DAB24F /* ContentView.swift */,
+				4415C48D3075E7CC00218BBD /* HistogramView.swift */,
+				44A1A3352B5F50E200DAB24F /* FrameView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		4415C4923076C7A300218BBD /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				4415C4893075E7BB00218BBD /* RingBuffer.swift */,
+				4415C48B3075E7C400218BBD /* Histogram.swift */,
+				4415C48F3076BBAD00218BBD /* TimeIntervalList.swift */,
+				4415C493307960F600218BBD /* FrameFilter.swift */,
+				4415C4953079735600218BBD /* CVPixelBufferExtension.swift */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
 		44A1A2F72B5F0A1200DAB24F = {
 			isa = PBXGroup;
 			children = (
@@ -104,9 +138,9 @@
 			isa = PBXGroup;
 			children = (
 				44A1A3032B5F0A1200DAB24F /* FlickerFindrApp.swift */,
-				44A1A3052B5F0A1200DAB24F /* ContentView.swift */,
 				44A1A3372B5F517100DAB24F /* FrameHandler.swift */,
-				44A1A3352B5F50E200DAB24F /* FrameView.swift */,
+				4415C4913076C78900218BBD /* Views */,
+				4415C4923076C7A300218BBD /* Support */,
 				44A1A3072B5F0A1400DAB24F /* Assets.xcassets */,
 				44A1A3092B5F0A1400DAB24F /* Preview Content */,
 			);
@@ -268,9 +302,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4415C48C3075E7C400218BBD /* Histogram.swift in Sources */,
+				4415C4903076BBAD00218BBD /* TimeIntervalList.swift in Sources */,
+				4415C48E3075E7CC00218BBD /* HistogramView.swift in Sources */,
 				44A1A3382B5F517100DAB24F /* FrameHandler.swift in Sources */,
+				4415C48A3075E7BB00218BBD /* RingBuffer.swift in Sources */,
+				4415C4963079735600218BBD /* CVPixelBufferExtension.swift in Sources */,
 				44A1A3362B5F50E200DAB24F /* FrameView.swift in Sources */,
 				44A1A3062B5F0A1200DAB24F /* ContentView.swift in Sources */,
+				4415C494307960F600218BBD /* FrameFilter.swift in Sources */,
 				44A1A3042B5F0A1200DAB24F /* FlickerFindrApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
