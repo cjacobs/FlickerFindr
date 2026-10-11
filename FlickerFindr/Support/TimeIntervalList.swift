@@ -21,6 +21,10 @@ class TimeIntervalList<T> {
         return buffer.count
     }
     
+    var isEmpty : Bool {
+        count == 0
+    }
+    
     var data: [T] {
         compact()
         return buffer.map { $0.value }

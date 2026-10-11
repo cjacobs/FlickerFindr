@@ -11,7 +11,7 @@
 		4415C48C3075E7C400218BBD /* Histogram.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C48B3075E7C400218BBD /* Histogram.swift */; };
 		4415C48E3075E7CC00218BBD /* HistogramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C48D3075E7CC00218BBD /* HistogramView.swift */; };
 		4415C4903076BBAD00218BBD /* TimeIntervalList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C48F3076BBAD00218BBD /* TimeIntervalList.swift */; };
-		4415C494307960F600218BBD /* FrameFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C493307960F600218BBD /* FrameFilter.swift */; };
+		4415C494307960F600218BBD /* TemporalFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C493307960F600218BBD /* TemporalFilter.swift */; };
 		4415C4963079735600218BBD /* CVPixelBufferExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C4953079735600218BBD /* CVPixelBufferExtension.swift */; };
 		44A1A3042B5F0A1200DAB24F /* FlickerFindrApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3032B5F0A1200DAB24F /* FlickerFindrApp.swift */; };
 		44A1A3062B5F0A1200DAB24F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3052B5F0A1200DAB24F /* ContentView.swift */; };
@@ -22,6 +22,7 @@
 		44A1A3212B5F0A1500DAB24F /* FlickerFindrUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3202B5F0A1500DAB24F /* FlickerFindrUITestsLaunchTests.swift */; };
 		44A1A3362B5F50E200DAB24F /* FrameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3352B5F50E200DAB24F /* FrameView.swift */; };
 		44A1A3382B5F517100DAB24F /* FrameHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3372B5F517100DAB24F /* FrameHandler.swift */; };
+		44D115C8307B159E00750B27 /* ControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D115C7307B159E00750B27 /* ControlsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,7 +47,7 @@
 		4415C48B3075E7C400218BBD /* Histogram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Histogram.swift; sourceTree = "<group>"; };
 		4415C48D3075E7CC00218BBD /* HistogramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistogramView.swift; sourceTree = "<group>"; };
 		4415C48F3076BBAD00218BBD /* TimeIntervalList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeIntervalList.swift; sourceTree = "<group>"; };
-		4415C493307960F600218BBD /* FrameFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameFilter.swift; sourceTree = "<group>"; };
+		4415C493307960F600218BBD /* TemporalFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemporalFilter.swift; sourceTree = "<group>"; };
 		4415C4953079735600218BBD /* CVPixelBufferExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CVPixelBufferExtension.swift; sourceTree = "<group>"; };
 		44A1A3002B5F0A1200DAB24F /* FlickerFindr.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlickerFindr.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		44A1A3032B5F0A1200DAB24F /* FlickerFindrApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlickerFindrApp.swift; sourceTree = "<group>"; };
@@ -60,6 +61,7 @@
 		44A1A3202B5F0A1500DAB24F /* FlickerFindrUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlickerFindrUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		44A1A3352B5F50E200DAB24F /* FrameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameView.swift; sourceTree = "<group>"; };
 		44A1A3372B5F517100DAB24F /* FrameHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameHandler.swift; sourceTree = "<group>"; };
+		44D115C7307B159E00750B27 /* ControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -94,6 +96,7 @@
 		4415C4913076C78900218BBD /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				44D115C7307B159E00750B27 /* ControlsView.swift */,
 				44A1A3052B5F0A1200DAB24F /* ContentView.swift */,
 				4415C48D3075E7CC00218BBD /* HistogramView.swift */,
 				44A1A3352B5F50E200DAB24F /* FrameView.swift */,
@@ -107,7 +110,7 @@
 				4415C4893075E7BB00218BBD /* RingBuffer.swift */,
 				4415C48B3075E7C400218BBD /* Histogram.swift */,
 				4415C48F3076BBAD00218BBD /* TimeIntervalList.swift */,
-				4415C493307960F600218BBD /* FrameFilter.swift */,
+				4415C493307960F600218BBD /* TemporalFilter.swift */,
 				4415C4953079735600218BBD /* CVPixelBufferExtension.swift */,
 			);
 			path = Support;
@@ -310,8 +313,9 @@
 				4415C4963079735600218BBD /* CVPixelBufferExtension.swift in Sources */,
 				44A1A3362B5F50E200DAB24F /* FrameView.swift in Sources */,
 				44A1A3062B5F0A1200DAB24F /* ContentView.swift in Sources */,
-				4415C494307960F600218BBD /* FrameFilter.swift in Sources */,
+				4415C494307960F600218BBD /* TemporalFilter.swift in Sources */,
 				44A1A3042B5F0A1200DAB24F /* FlickerFindrApp.swift in Sources */,
+				44D115C8307B159E00750B27 /* ControlsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

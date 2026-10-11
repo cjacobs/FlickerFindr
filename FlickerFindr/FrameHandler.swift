@@ -19,23 +19,25 @@ import Foundation
     var desiredFps: Double = 240
     let visibleTimeSpan: TimeInterval = 1
     var droppedFrames: TimeIntervalList<Int>
-    var frameDiffValues: TimeIntervalList<Float>
+    var frameDifferenceValues: TimeIntervalList<Float>
 
-    var blurRadius: Float = 20
+    var blurRadius: Double = 20
     private var prevProcessedFrame: CIImage? = nil
     private var prevDisplayFrame: CIImage? = nil
     private var prevLightLevel: Float = 0.0
-    private let temporalFilter = FrameFilter(
+    private let temporalFilter = TemporalFilter(
         coeff1: CGFloat(0.4),
         coeff2: CGFloat(0.6)
     )
+    var useTemporalFilter = false
+
+    var currentDevice: AVCaptureDevice? = nil
 
     typealias DeviceMap = [AVCaptureDevice: [(
         format: AVCaptureDevice.Format, frameRate: AVFrameRateRange
     )]]
 
     var availableDeviceMap: DeviceMap = [:]
-
     var availableDeviceNames: [String] {
         availableDeviceMap.keys.map { $0.localizedName }
     }
@@ -50,9 +52,20 @@ import Foundation
     private let sessionQueue = DispatchQueue(label: "sessionQueue")
     private let context = CIContext()
 
+    // CIFilters
+    // gaussian blur
+    // componentMultiply
+    // colorAbsoluteDifference
+    // componentAdd
+    // componentMax
+    // divide
+    // falseColor (for grayscale conversion)
+    // gammaAdjust
+    // CIAreaAverage
+
     override init() {
         self.droppedFrames = TimeIntervalList<Int>(span: 1.0)
-        self.frameDiffValues = TimeIntervalList<Float>(span: 1.0)
+        self.frameDifferenceValues = TimeIntervalList<Float>(span: 1.0)
         super.init()
     }
 
@@ -85,7 +98,6 @@ import Foundation
         }
     }
 
-    
     // AVCaptureVideoStabilizationMode.lowLatency
     func setUpCaptureSession() {
         guard permissionGranted else { return }
@@ -107,7 +119,7 @@ import Foundation
         do {
             try device.lockForConfiguration()
             defer { device.unlockForConfiguration() }
-            
+
             device.activeFormat = format
 
             //            let desiredFrameDuration = 1 / desiredFps
@@ -144,17 +156,19 @@ import Foundation
         //        videoOutput.alwaysDiscardsLateVideoFrames = false
         guard captureSession.canAddOutput(videoOutput) else { return }
         captureSession.addOutput(videoOutput)
-        
+
         let connection = videoOutput.connection(with: .video)
-        guard let connection else {return}
+        guard let connection else { return }
         connection.videoRotationAngle = 90.0
         if connection.isVideoStabilizationSupported {
             print("Stabilization, baby!")
             connection.preferredVideoStabilizationMode = .lowLatency
         }
+        
+        self.currentDevice = device
     }
 
-    func discoverDevices() -> DeviceMap{
+    func discoverDevices() -> DeviceMap {
         let cameraTypes: [AVCaptureDevice.DeviceType] = [
             .builtInWideAngleCamera,
             .builtInUltraWideCamera,
@@ -173,7 +187,7 @@ import Foundation
         let devices = discoverySession.devices
         guard !devices.isEmpty else { fatalError("Missing capture devices.") }
 
-        availableDeviceMap = [:]
+        var deviceMap:DeviceMap = [:]
 
         // TODO: factor this out into getAvailableDevices or something
         for device in devices {
@@ -184,23 +198,28 @@ import Foundation
                             && desiredFps <= $0.maxFrameRate
                     })
                 {
-                    availableDeviceMap[device, default: []].append(
+                    deviceMap[device, default: []].append(
                         (format: format, frameRate: goodRange)
                     )
                 }
             }
         }
 
-        guard !availableDeviceMap.isEmpty else {
+        guard !deviceMap.isEmpty else {
             fatalError("Missing adequate capture devices.")
         }
-        return availableDeviceMap
+        return deviceMap
     }
-    
+
     func filterDisplayFrame(frame: CIImage, mask: CIImage) -> CIImage {
         let multFilter = CIBlendKernel.componentMultiply
         let output = multFilter.apply(foreground: frame, background: mask)!
-        return temporalFilter.processFrame(frame: output)
+
+        if useTemporalFilter {
+            return temporalFilter.processFrame(frame: output)
+        } else {
+            return output
+        }
     }
 
     // difference value between 2 processed images
@@ -237,7 +256,7 @@ import Foundation
     }
 
     // preprocessing images before they're differenced
-    func preprocessFrame(_ image: CIImage, blurRadius: Float = 2) -> CIImage {
+    func preprocessFrame(_ image: CIImage, blurRadius: Double = 2) -> CIImage {
         let falseColorFilter = CIFilter.falseColor()
         falseColorFilter.color0 = .black
         falseColorFilter.color1 = .white
@@ -346,13 +365,14 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         let currentLightLevel = averageBrightness(maskImage) ?? 0
         defer { prevLightLevel = currentLightLevel }
         let diff = abs(currentLightLevel - prevLightLevel)
-        self.frameDiffValues.append(diff, t: captureTime)
+        self.frameDifferenceValues.append(diff, t: captureTime)
 
         let displayFrame = filterDisplayFrame(
             frame: inputImage,
             mask: maskImage
         )
 
+        
         guard
             let cgImage = context.createCGImage(
                 displayFrame,

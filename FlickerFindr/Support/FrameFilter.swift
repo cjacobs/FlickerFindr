@@ -8,7 +8,7 @@
 import CoreImage
 import Foundation
 
-class FrameFilter {
+class TemporalFilter {
     private var prevFrame: CIImage? = nil
     var coeff1: CGFloat
     var coeff2: CGFloat
