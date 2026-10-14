@@ -19,7 +19,8 @@ import Foundation
     var desiredFps: Double = 240
     let visibleTimeSpan: TimeInterval = 1
     var droppedFrames: TimeIntervalList<Int>
-    var frameDifferenceValues: TimeIntervalList<Float>
+    typealias TimeIntervalFrameList = TimeIntervalList<(difference: Float, frame: CGImage?)>
+    var frameDifferenceValues: TimeIntervalFrameList
 
     var blurRadius: Double = 20
     private var prevProcessedFrame: CIImage? = nil
@@ -65,7 +66,7 @@ import Foundation
 
     override init() {
         self.droppedFrames = TimeIntervalList<Int>(span: 1.0)
-        self.frameDifferenceValues = TimeIntervalList<Float>(span: 1.0)
+        self.frameDifferenceValues = TimeIntervalFrameList(span: 1.0)
         super.init()
     }
 
@@ -365,7 +366,8 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         let currentLightLevel = averageBrightness(maskImage) ?? 0
         defer { prevLightLevel = currentLightLevel }
         let diff = abs(currentLightLevel - prevLightLevel)
-        self.frameDifferenceValues.append(diff, t: captureTime)
+        self.frameDifferenceValues.append((difference: diff, frame:nil), t: captureTime)
+        self.withMutation(keyPath: \.frameDifferenceValues) {}
 
         let displayFrame = filterDisplayFrame(
             frame: inputImage,
@@ -396,6 +398,8 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
     ) {
         DispatchQueue.main.async { [unowned self] in
             self.droppedFrames.append(1)
+            self.withMutation(keyPath: \.droppedFrames) {
+            }
         }
 
         /*

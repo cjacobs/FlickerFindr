@@ -13,7 +13,7 @@ struct TimeEntry<T> {
 }
 
 class TimeIntervalList<T> {
-    private var buffer: [TimeEntry<T>] = []
+    var buffer: [TimeEntry<T>] = []
     private var span: TimeInterval
 
     var count: Int {

@@ -7,7 +7,7 @@
 
 import Foundation
 
-class Histogram<T> where T == Float {
+class Histogram<T> {
     // input:
     // - bounds on data
     // - num bins
@@ -16,23 +16,28 @@ class Histogram<T> where T == Float {
     typealias Entry = (range: ClosedRange<Double>, count: Int)
     var data: [T] = []
     var domain: ClosedRange<Double>
+    var range: ClosedRange<Double>
     var numBins: Int
     var counts: [Int] = []
     var ranges: [ClosedRange<Double>] = []
 
-    init(data: [T], domain: ClosedRange<Double>, numBins: Int) {
+    init(data: [T], domain: ClosedRange<Double>, numBins: Int, range:ClosedRange<Double>) {
         self.data = data
         self.domain = domain
         self.numBins = numBins
-        
-        computeBins()
-        computeHistogram()
+        self.range = range
+
     }
     
     var binWidth : Double {
         (domain.upperBound - domain.lowerBound) / Double(numBins)
     }
     
+    func setup() where T == Float{
+        computeBins()
+        computeHistogram()
+    }
+       
     func computeBins() {
         for i in 0..<numBins {
             let start = domain.lowerBound + Double(i)*binWidth
@@ -41,7 +46,7 @@ class Histogram<T> where T == Float {
         }
     }
 
-    func computeHistogram() {
+    func computeHistogram() where T==Float {
         for value in data {
             let dataValue = Double(value)
             let bin = Int((dataValue - domain.lowerBound) / binWidth)

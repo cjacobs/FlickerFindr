@@ -23,6 +23,7 @@
 		44A1A3362B5F50E200DAB24F /* FrameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3352B5F50E200DAB24F /* FrameView.swift */; };
 		44A1A3382B5F517100DAB24F /* FrameHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3372B5F517100DAB24F /* FrameHandler.swift */; };
 		44D115C8307B159E00750B27 /* ControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D115C7307B159E00750B27 /* ControlsView.swift */; };
+		44D115CA307E941C00750B27 /* InfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D115C9307E941C00750B27 /* InfoView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,6 +63,7 @@
 		44A1A3352B5F50E200DAB24F /* FrameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameView.swift; sourceTree = "<group>"; };
 		44A1A3372B5F517100DAB24F /* FrameHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameHandler.swift; sourceTree = "<group>"; };
 		44D115C7307B159E00750B27 /* ControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlsView.swift; sourceTree = "<group>"; };
+		44D115C9307E941C00750B27 /* InfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -96,10 +98,11 @@
 		4415C4913076C78900218BBD /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				44D115C7307B159E00750B27 /* ControlsView.swift */,
 				44A1A3052B5F0A1200DAB24F /* ContentView.swift */,
+				44D115C9307E941C00750B27 /* InfoView.swift */,
 				4415C48D3075E7CC00218BBD /* HistogramView.swift */,
 				44A1A3352B5F50E200DAB24F /* FrameView.swift */,
+				44D115C7307B159E00750B27 /* ControlsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -308,6 +311,7 @@
 				4415C48C3075E7C400218BBD /* Histogram.swift in Sources */,
 				4415C4903076BBAD00218BBD /* TimeIntervalList.swift in Sources */,
 				4415C48E3075E7CC00218BBD /* HistogramView.swift in Sources */,
+				44D115CA307E941C00750B27 /* InfoView.swift in Sources */,
 				44A1A3382B5F517100DAB24F /* FrameHandler.swift in Sources */,
 				4415C48A3075E7BB00218BBD /* RingBuffer.swift in Sources */,
 				4415C4963079735600218BBD /* CVPixelBufferExtension.swift in Sources */,

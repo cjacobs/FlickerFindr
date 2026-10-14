@@ -13,41 +13,29 @@ struct ContentView: View {
 
     var body: some View {
 
-        // information
-        HStack {
-            Gauge(value: model.fps, in: 0...240) {
-                Text("\(model.fps)")
-            }
-
-            Spacer()
-            Text(String(describing: model.droppedFrames.count))
-            Spacer()
-            Text(
-                String(
-                    describing: model.frameDifferenceValues.data.reduce(0) {
-                        (prev, value) in
-                        prev + value
-                    } / Float(model.frameDifferenceValues.data.count)
-                )
-            )
-        }.hidden()
-
         VStack {
-            HistogramView(frameDifferenceValues: $model.frameDifferenceValues)
-//            HistogramView(data: $model.frameDifferenceValues)
 
-            Text("# devices: \(model.availableDeviceMap.count)")
-        }
-
-        // frame
-        VStack {
             FrameView(image: model.frame)
-                .padding(50)
                 .onAppear { model.start() }
-        }
+                .overlay(alignment: .bottom) {
+                    ControlsView(model: model)
+                        .background(
+                            .white.opacity(0.5),
+                            in: RoundedRectangle(cornerRadius: 8)
+                        )
+                }
+                .overlay(alignment: .top) {
+                    InfoView(model: model)
+                        .background(
+                            .white.opacity(0.5),
+                            in: RoundedRectangle(cornerRadius: 8)
+                        )
+                        .foregroundStyle(.white)
+                }
 
-        ControlsView(model: model)
+        }
     }
+
 }
 
 //#Preview {
