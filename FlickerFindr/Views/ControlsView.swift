@@ -13,17 +13,23 @@ struct ControlsView: View {
     @State private var cameraSelection: AVCaptureDevice? = nil
 
     var body: some View {
-        VStack {
-            HStack {
-                Spacer()
+        Text("Controls")
+            
+        Form {
+            Section(header: Text("Filtering controls")) {
                 Slider(value: $model.blurRadius, in: 0.0...50.0) {
                     Text("blur")
                 }
-                .frame(width: 100)
-                .controlSize(.mini)
-                Spacer()
 
-                // model picker
+                Slider(value: $model.divisorConstant, in: 0.001...0.9) {
+                    Text("divisor")
+                }
+
+                Toggle("temp filt", isOn: $model.useTemporalFilter)
+            }
+
+            Section(header: Text("Camera controls")) // model picker
+            {
                 if !model.availableDeviceMap.isEmpty {
                     Picker(selection: $cameraSelection) {
                         ForEach(
@@ -43,18 +49,10 @@ struct ControlsView: View {
                         Text("Device")
                     }
                     .pickerStyle(.automatic)
-                    .controlSize(.mini)
                 }
             }
-            
-            
-            HStack{
-                Toggle("temp filt", isOn: $model.useTemporalFilter)
-                    .compactToggleStyle()
-                    .frame(width:200)
-                Spacer()
-            }
         }
+        .navigationTitle("Controls")
     }
 }
 

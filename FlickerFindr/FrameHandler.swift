@@ -22,7 +22,10 @@ import Foundation
     typealias TimeIntervalFrameList = TimeIntervalList<(difference: Float, frame: CGImage?)>
     var frameDifferenceValues: TimeIntervalFrameList
 
+    // control parameters
     var blurRadius: Double = 20
+    var divisorConstant: CGFloat = 0.2
+
     private var prevProcessedFrame: CIImage? = nil
     private var prevDisplayFrame: CIImage? = nil
     private var prevLightLevel: Float = 0.0
@@ -233,12 +236,11 @@ import Foundation
         let maxFilter = CIBlendKernel.componentMax
         let maxImage = maxFilter.apply(foreground: image, background: image2)!
 
-        let divisorConst: CGFloat = 0.2
         let constImage = CIImage(
             color: CIColor(
-                red: divisorConst,
-                green: divisorConst,
-                blue: divisorConst
+                red: divisorConstant,
+                green: divisorConstant,
+                blue: divisorConstant
             )
         ).cropped(to: maxImage.extent)
         let addFilter = CIBlendKernel.componentAdd
