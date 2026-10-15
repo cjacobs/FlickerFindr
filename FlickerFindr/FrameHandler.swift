@@ -19,7 +19,8 @@ import Foundation
     var desiredFps: Double = 240
     let visibleTimeSpan: TimeInterval = 1
     var droppedFrames: TimeIntervalList<Int>
-    typealias TimeIntervalFrameList = TimeIntervalList<(difference: Float, frame: CGImage?)>
+    typealias FrameInfo = (difference: Float, frame: CGImage?)
+    typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     var frameDifferenceValues: TimeIntervalFrameList
 
     // control parameters

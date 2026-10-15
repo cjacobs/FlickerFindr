@@ -14,21 +14,31 @@ struct ControlsView: View {
 
     var body: some View {
         Text("Controls")
-            
+
         Form {
             Section(header: Text("Filtering controls")) {
-                Slider(value: $model.blurRadius, in: 0.0...50.0) {
-                    Text("blur")
+
+                HStack {
+                    Text("blur:")
+                    Slider(
+                        value: $model.blurRadius,
+                        in: 0.0...50.0,
+                    ) {
+                        Text("blur")
+                    }
                 }
 
-                Slider(value: $model.divisorConstant, in: 0.001...0.9) {
-                    Text("divisor")
+                HStack {
+                    Text("divisor:")
+                    Slider(value: $model.divisorConstant, in: 0.001...0.9) {
+                        Text("divisor")
+                    }
                 }
 
                 Toggle("temp filt", isOn: $model.useTemporalFilter)
             }
 
-            Section(header: Text("Camera controls")) // model picker
+            Section(header: Text("Camera controls"))  // model picker
             {
                 if !model.availableDeviceMap.isEmpty {
                     Picker(selection: $cameraSelection) {

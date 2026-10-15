@@ -4,13 +4,14 @@ TODO:
 - [x] make a RingBuffer class
 - [x] keep a ring buffer of previous frame-diff values 
 (actually, a timestamped buffer of a constant amount of time)    
-- [ ] add a view showing where in the timeline the high-diff frames are
+- [x] add a view showing where in the timeline the high-diff frames are
 - [ ] guess frequency based on buffer of frame diff (maybe just count, rather than fft?)
 - [ ] add a picker to pick which camera
 - [ ] add a slider to zoom
 - [ ] HDR? maybe make a mask - everything over 1.0 == bright enough to process?
 - [ ] figure out why temporal filter is so slows
 - [ ] write metal shaders for temporal filter, et al
+- [ ] refactor things so that previews work
 
 Info on implementing sheet views:
 https://21zerixpm.medium.com/bottom-sheets-in-swiftui-modal-presentations-done-right-bc4ab6825d02

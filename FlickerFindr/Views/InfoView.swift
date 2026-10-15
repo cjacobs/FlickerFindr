@@ -13,21 +13,12 @@ struct InfoView: View {
     let fpsRange = Float(0)...240
     var body: some View {
         VStack {
-//            HStack {
-//                Gauge(value: model.fps.clamped(to: fpsRange), in: fpsRange) {
-//                    Text("\(model.fps)")
-//                }
-//            }
-
-            HistogramView(model: model)
+            HistogramView(frameDifferenceValues: $model.frameDifferenceValues)
                 .frame(height: 80)
+            
+            HistoryView(datapoints: $model.frameDifferenceValues)
+                .frame(height:80)
         }
-    }
-}
-
-extension Comparable {
-    func clamped(to range: ClosedRange<Self>) -> Self {
-        return min(range.upperBound, max(self, range.lowerBound))
     }
 }
 

@@ -10,10 +10,10 @@ import Foundation
 import SwiftUI
 
 struct HistogramView: View {
-    @Bindable var model: FrameHandler
+    @Binding var frameDifferenceValues: FrameHandler.TimeIntervalFrameList
 
     var data: [Float] {
-        return model.frameDifferenceValues.data.map { element in
+        return frameDifferenceValues.data.map { element in
             element.difference
         }
     }
@@ -21,7 +21,6 @@ struct HistogramView: View {
     // https://nilcoalescing.com/blog/PlottingDataDistributionsWithSwiftCharts/
     var body: some View {
         VStack {
-
             // TODO: find better defaults for range and numBins
             // TODO: use a moving average of max value for range upper bound
             let domain = 0.0...1.0
