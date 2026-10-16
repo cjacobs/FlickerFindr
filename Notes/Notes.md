@@ -1,4 +1,10 @@
 #  <#Notes#>
+TODO (this branch):
+- [ ] switch to using sample time instead of `Date` time
+- [ ] have `FrameHandler` keep the current timestamp
+- [ ] have `HistoryView` depend on `FrameHandler.currentTimestamp` instead of using a `TimelineView`
+- [ ] add a pause button that pauses the frame grabbing (and therefore the updating of timestamp-dependent views
+
 
 TODO:
 - [x] make a RingBuffer class
@@ -13,10 +19,6 @@ TODO:
 - [ ] write metal shaders for temporal filter, et al
 - [ ] refactor things so that previews work
 - [ ] subsample input image if blur is big enough
-
-TODO?:
-- [ ] use `CMTime` timestamps instead of `Date`?
-- [ ] 
 
 Info on implementing sheet views:
 https://21zerixpm.medium.com/bottom-sheets-in-swiftui-modal-presentations-done-right-bc4ab6825d02

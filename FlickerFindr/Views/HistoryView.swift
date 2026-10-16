@@ -11,30 +11,32 @@ import SwiftUI
 struct HistoryView: View {
     let threshold: Float = 0.02
     @Binding var datapoints: TimeIntervalFrameList
-    let domain = 0.0 ... 1.0
+    let domain = 0.0...1.0
     var data: [TimeEntry<FrameInfo>] {
         datapoints.buffer.filter {
             $0.value.difference > threshold
         }
-        
+
     }
 
     var body: some View {
-//        let firstTime = data.isEmpty ? Date.now : data.first!.time
-        let firstTime = Date.now - (domain.upperBound-domain.lowerBound)
-        TimelineView(.periodic(from: Date.distantPast, by: 0.1)) { _ in
-            return Chart(data.enumerated(), id: \.offset) { element in
-                return BarMark(
-                    x: .value(
-                        "time",
-                        firstTime.distance(to: element.element.time)
-                    ),
-                    y: .value("diff", element.element.value.difference)
-                )
-            }
-            .chartXScale(domain: 0.0...1.0)
+        let displayInterval = (domain.upperBound-domain.lowerBound)
+        let firstTimeSeconds = datapoints.currentTime.seconds - displayInterval // (== LHS of graph
+        return Chart(data.enumerated(), id: \.offset) { element in
+            let t = (element.element.time.seconds - firstTimeSeconds)
+
+            return BarMark(
+                x: .value(
+                    "time",
+                    t
+                ),
+                y: .value("diff", element.element.value.difference)
+            )
         }
+                .chartXScale(domain: 0.0...1.0)
+                .chartYScale(domain: 0.0 ... 1.0)
     }
+
 }
 
 //#Preview {

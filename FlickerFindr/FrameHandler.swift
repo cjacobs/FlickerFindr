@@ -17,8 +17,6 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
 
 @Observable class FrameHandler: NSObject {
     var frame: CGImage? = nil
-    var fps: Float = 0.0
-    var processFps: Float = 0.0
     var desiredFps: Double = 240
     let visibleTimeSpan: TimeInterval = 1
     var droppedFrames: TimeIntervalList<Int>
@@ -48,8 +46,8 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         availableDeviceMap.keys.map { $0.localizedName }
     }
 
-    private var prevCaptureTime = Date()
-    private var prevProcessTime = Date()
+    private var prevCaptureTimestamp : CMTime = .negativeInfinity
+    private var prevProcessTimestamp : CMTime = .negativeInfinity
     private var count = 0
     private let maxFrames = 1
 
@@ -325,25 +323,17 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        let captureTime = Date.now
-        let capturePeriod = prevCaptureTime.distance(to: captureTime)
-        prevCaptureTime = captureTime
-        let captureFPS = Float(1 / capturePeriod)
+        let captureTimestamp = sampleBuffer.presentationTimeStamp
 
-        // set per-frame state
-        DispatchQueue.main.async { [unowned self] in
-            self.fps = captureFPS
-        }
+        let framePeried = captureTimestamp-prevCaptureTimestamp
+        prevCaptureTimestamp = captureTimestamp
 
         defer { count = (count + 1) % maxFrames }
 
         if count > 0 { return }
-        let processPeriod = prevProcessTime.distance(to: captureTime)
-        prevProcessTime = captureTime
-        let processFPS = Float(1 / processPeriod)
-        DispatchQueue.main.async { [unowned self] in
-            self.processFps = processFPS
-        }
+        let processPeriod = captureTimestamp - prevProcessTimestamp
+        // TODO: compute FPS if we care
+        prevProcessTimestamp = captureTimestamp
 
         guard let imageBuffer = sampleBuffer.imageBuffer?.copy() ?? nil
         else { return }
@@ -368,7 +358,7 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         let currentLightLevel = averageBrightness(maskImage) ?? 0
         defer { prevLightLevel = currentLightLevel }
         let diff = abs(currentLightLevel - prevLightLevel)
-        self.frameDifferenceValues.append((difference: diff, frame:nil), t: captureTime)
+        self.frameDifferenceValues.append((difference: diff, frame:nil), t: captureTimestamp)
         self.withMutation(keyPath: \.frameDifferenceValues) {}
 
         let displayFrame = filterDisplayFrame(
@@ -397,8 +387,11 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         didDrop sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
+        let timestamp = sampleBuffer.presentationTimeStamp
+        self.frameDifferenceValues.currentTime = timestamp
+
         DispatchQueue.main.async { [unowned self] in
-            self.droppedFrames.append(1)
+            self.droppedFrames.append(1, t: timestamp)
             self.withMutation(keyPath: \.droppedFrames) {
             }
         }
