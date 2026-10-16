@@ -20,7 +20,6 @@ struct HistoryView: View {
     }
 
     var body: some View {
-//        let firstTime = data.isEmpty ? Date.now : data.first!.time
         let firstTime = Date.now - (domain.upperBound-domain.lowerBound)
         TimelineView(.periodic(from: Date.distantPast, by: 0.1)) { _ in
             return Chart(data.enumerated(), id: \.offset) { element in
@@ -29,7 +28,8 @@ struct HistoryView: View {
                         "time",
                         firstTime.distance(to: element.element.time)
                     ),
-                    y: .value("diff", element.element.value.difference)
+                    y: .value("diff", element.element.value.difference),
+                    width: .fixed(0.5)
                 )
             }
             .chartXScale(domain: 0.0...1.0)

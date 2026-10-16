@@ -16,17 +16,14 @@ class Histogram<T> {
     typealias Entry = (range: ClosedRange<Double>, count: Int)
     var data: [T] = []
     var domain: ClosedRange<Double>
-    var range: ClosedRange<Double>
     var numBins: Int
     var counts: [Int] = []
     var ranges: [ClosedRange<Double>] = []
 
-    init(data: [T], domain: ClosedRange<Double>, numBins: Int, range:ClosedRange<Double>) {
+    init(data: [T], domain: ClosedRange<Double>, numBins: Int) {
         self.data = data
         self.domain = domain
         self.numBins = numBins
-        self.range = range
-
     }
     
     var binWidth : Double {
@@ -50,9 +47,8 @@ class Histogram<T> {
         for value in data {
             let dataValue = Double(value)
             let bin = Int((dataValue - domain.lowerBound) / binWidth)
-            if bin >= 0 && bin < numBins{
-                counts[bin] += 1
-            }
+            let histBin = bin.clamped(to: 0 ..< numBins)
+            counts[histBin] += 1
         }
     }
 
