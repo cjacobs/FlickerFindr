@@ -10,11 +10,13 @@ import Foundation
 struct TimeEntry<T> {
     let time: Date
     let value: T
+    typealias ElementType = T
 }
 
 class TimeIntervalList<T> {
     var buffer: [TimeEntry<T>] = []
     private var span: TimeInterval
+    typealias ElementType = T
 
     var count: Int {
         compact()

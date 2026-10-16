@@ -13,7 +13,7 @@ struct InfoView: View {
     let fpsRange = Float(0)...240
     var body: some View {
         VStack {
-            HistogramView(frameDifferenceValues: $model.frameDifferenceValues)
+            HistogramView(data: $model.frameDifferenceValues)
                 .frame(height: 80)
             
             HistoryView(datapoints: $model.frameDifferenceValues)

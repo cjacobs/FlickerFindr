@@ -10,16 +10,18 @@ import SwiftUI
 
 struct HistoryView: View {
     let threshold: Float = 0.02
-    @Binding var datapoints: FrameHandler.TimeIntervalFrameList
+    @Binding var datapoints: TimeIntervalFrameList
     let domain = 0.0 ... 1.0
-    var data: [TimeEntry<FrameHandler.FrameInfo>] {
+    var data: [TimeEntry<FrameInfo>] {
         datapoints.buffer.filter {
             $0.value.difference > threshold
         }
+        
     }
 
     var body: some View {
-        let firstTime = data.isEmpty ? Date.now : data.first!.time
+//        let firstTime = data.isEmpty ? Date.now : data.first!.time
+        let firstTime = Date.now - (domain.upperBound-domain.lowerBound)
         TimelineView(.periodic(from: Date.distantPast, by: 0.1)) { _ in
             return Chart(data.enumerated(), id: \.offset) { element in
                 return BarMark(

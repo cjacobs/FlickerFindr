@@ -10,10 +10,10 @@ import Foundation
 import SwiftUI
 
 struct HistogramView: View {
-    @Binding var frameDifferenceValues: FrameHandler.TimeIntervalFrameList
+    @Binding var data: TimeIntervalFrameList
 
-    var data: [Float] {
-        return frameDifferenceValues.data.map { element in
+    var rawData: [Float] {
+        return data.data.map { element in
             element.difference
         }
     }
@@ -27,13 +27,13 @@ struct HistogramView: View {
             let numBins = 20
             let range = 0.0...0.2
             let histogram = Histogram<Float>(
-                data: data,
+                data: rawData,
                 domain: domain,
                 numBins: numBins,
                 range: range
             )
             histogram.setup()
-            let barWidth =
+            let binWidth =
                 (range.upperBound - range.lowerBound) / Double(numBins)
 
             // TODO: use NumberBins for histogram (if we're only using it for display)
@@ -42,9 +42,9 @@ struct HistogramView: View {
                 return BarMark(
                     x: .value(
                         "Image Diff",
-                        range.lowerBound + Double(value.offset) * barWidth
+                        range.lowerBound + Double(value.offset) * binWidth
                     ),
-                    y: .value("Frequency", value.element)
+                    y: .value("Count", value.element)
                 )
             }
         }

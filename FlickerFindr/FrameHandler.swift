@@ -12,6 +12,9 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import Foundation
 
+typealias FrameInfo = (difference: Float, frame: CGImage?)
+typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
+
 @Observable class FrameHandler: NSObject {
     var frame: CGImage? = nil
     var fps: Float = 0.0
@@ -19,8 +22,6 @@ import Foundation
     var desiredFps: Double = 240
     let visibleTimeSpan: TimeInterval = 1
     var droppedFrames: TimeIntervalList<Int>
-    typealias FrameInfo = (difference: Float, frame: CGImage?)
-    typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     var frameDifferenceValues: TimeIntervalFrameList
 
     // control parameters
@@ -347,8 +348,6 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         guard let imageBuffer = sampleBuffer.imageBuffer?.copy() ?? nil
         else { return }
 
-        //        let frameDuration = sampleBuffer.duration
-
         let inputImage = CIImage(cvPixelBuffer: imageBuffer)
 
         let processedFrame = preprocessFrame(
@@ -376,7 +375,6 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
             frame: inputImage,
             mask: maskImage
         )
-
         
         guard
             let cgImage = context.createCGImage(
