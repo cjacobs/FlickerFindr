@@ -29,7 +29,7 @@ struct ContentView: View {
                     .foregroundStyle(.white)
             }
             .sheet(isPresented: $isShowingControls) {
-                ControlsView(model: model)
+                ControlsView(model: model, isRunning: $model.isRunning)
                     .background(
                         .white.opacity(0.5)
                     )

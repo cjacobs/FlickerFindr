@@ -22,9 +22,11 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     var droppedFrames: TimeIntervalList<Int>
     var frameDifferenceValues: TimeIntervalFrameList
 
+    var isRunning: Bool = false
     // control parameters
     var blurRadius: Double = 20
     var divisorConstant: CGFloat = 0.2
+    var useTemporalFilter = false
 
     private var prevProcessedFrame: CIImage? = nil
     private var prevDisplayFrame: CIImage? = nil
@@ -33,7 +35,6 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         coeff1: CGFloat(0.4),
         coeff2: CGFloat(0.6)
     )
-    var useTemporalFilter = false
 
     var currentDevice: AVCaptureDevice? = nil
 
@@ -46,8 +47,8 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         availableDeviceMap.keys.map { $0.localizedName }
     }
 
-    private var prevCaptureTimestamp : CMTime = .negativeInfinity
-    private var prevProcessTimestamp : CMTime = .negativeInfinity
+    private var prevCaptureTimestamp: CMTime = .negativeInfinity
+    private var prevProcessTimestamp: CMTime = .negativeInfinity
     private var count = 0
     private let maxFrames = 1
 
@@ -77,7 +78,24 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         self.checkPermission()
         sessionQueue.async { [unowned self] in
             self.setUpCaptureSession()
+            self.run()
+        }
+    }
+
+    func pause() {
+        sessionQueue.async { [unowned self] in
+            self.captureSession.stopRunning()
+            isRunning = self.captureSession.isRunning
+            self.withMutation(keyPath: \.isRunning) {}
+        }
+
+    }
+
+    func run() {
+        sessionQueue.async { [unowned self] in
             self.captureSession.startRunning()
+            isRunning = self.captureSession.isRunning
+            self.withMutation(keyPath: \.isRunning) {}
         }
     }
 
@@ -168,7 +186,7 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
             print("Stabilization, baby!")
             connection.preferredVideoStabilizationMode = .lowLatency
         }
-        
+
         self.currentDevice = device
     }
 
@@ -191,7 +209,7 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         let devices = discoverySession.devices
         guard !devices.isEmpty else { fatalError("Missing capture devices.") }
 
-        var deviceMap:DeviceMap = [:]
+        var deviceMap: DeviceMap = [:]
 
         // TODO: factor this out into getAvailableDevices or something
         for device in devices {
@@ -325,7 +343,7 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
     ) {
         let captureTimestamp = sampleBuffer.presentationTimeStamp
 
-        let framePeried = captureTimestamp-prevCaptureTimestamp
+        let framePeried = captureTimestamp - prevCaptureTimestamp
         prevCaptureTimestamp = captureTimestamp
 
         defer { count = (count + 1) % maxFrames }
@@ -358,14 +376,17 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         let currentLightLevel = averageBrightness(maskImage) ?? 0
         defer { prevLightLevel = currentLightLevel }
         let diff = abs(currentLightLevel - prevLightLevel)
-        self.frameDifferenceValues.append((difference: diff, frame:nil), t: captureTimestamp)
+        self.frameDifferenceValues.append(
+            (difference: diff, frame: nil),
+            t: captureTimestamp
+        )
         self.withMutation(keyPath: \.frameDifferenceValues) {}
 
         let displayFrame = filterDisplayFrame(
             frame: inputImage,
             mask: maskImage
         )
-        
+
         guard
             let cgImage = context.createCGImage(
                 displayFrame,
@@ -376,7 +397,6 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         DispatchQueue.main.async { [unowned self] in
             self.frame = cgImage
         }
-
     }
 
     //
