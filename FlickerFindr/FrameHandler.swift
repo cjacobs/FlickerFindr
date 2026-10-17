@@ -22,8 +22,8 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     var droppedFrames: TimeIntervalList<Int>
     var frameDifferenceValues: TimeIntervalFrameList
 
-    var isRunning: Bool = false
     // control parameters
+    var isRunning: Bool = false
     var blurRadius: Double = 20
     var divisorConstant: CGFloat = 0.2
     var useTemporalFilter = false
@@ -397,6 +397,7 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         DispatchQueue.main.async { [unowned self] in
             self.frame = cgImage
         }
+
     }
 
     //

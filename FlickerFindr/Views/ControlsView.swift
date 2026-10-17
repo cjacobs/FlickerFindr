@@ -11,7 +11,7 @@ import SwiftUI
 struct ControlsView: View {
     @Bindable var model: FrameHandler
     @Binding var isRunning: Bool
-
+    
     @State private var cameraSelection: AVCaptureDevice? = nil
 
     var body: some View {
@@ -21,15 +21,14 @@ struct ControlsView: View {
             Button("pause", systemImage: "pause.circle") {
                 model.pause()
             }
-            .disabled(!model.isRunning)
+            .disabled(!isRunning)
             Spacer()
             Button("play", systemImage: "play.circle") {
                 model.run()
             }
-            .disabled(model.isRunning)
+            .disabled(isRunning)
         }
         Form {
-
             Section(header: Text("Filtering controls")) {
 
                 HStack {
