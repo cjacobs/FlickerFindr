@@ -28,6 +28,10 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     var divisorConstant: CGFloat = 0.2
     var useTemporalFilter = false
 
+    private var chunkFrameIndex = 0
+    private let framesPerChunk = 2
+
+    private var prevCapturedFrame: CIImage? = nil
     private var prevProcessedFrame: CIImage? = nil
     private var prevDisplayFrame: CIImage? = nil
     private var prevLightLevel: Float = 0.0
@@ -49,8 +53,6 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
 
     private var prevCaptureTimestamp: CMTime = .negativeInfinity
     private var prevProcessTimestamp: CMTime = .negativeInfinity
-    private var count = 0
-    private let maxFrames = 1
 
     private var permissionGranted = false
     private let captureSession = AVCaptureSession()
@@ -120,7 +122,6 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         }
     }
 
-    // AVCaptureVideoStabilizationMode.lowLatency
     func setUpCaptureSession() {
         guard permissionGranted else { return }
 
@@ -182,8 +183,8 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         let connection = videoOutput.connection(with: .video)
         guard let connection else { return }
         connection.videoRotationAngle = 90.0
+
         if connection.isVideoStabilizationSupported {
-            print("Stabilization, baby!")
             connection.preferredVideoStabilizationMode = .lowLatency
         }
 
@@ -238,10 +239,20 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         let output = multFilter.apply(foreground: frame, background: mask)!
 
         if useTemporalFilter {
-            return temporalFilter.processFrame(frame: output)
+            guard let cgImage = context.createCGImage(
+                output,
+                from: output.extent) else { return output }
+
+            return temporalFilter.processFrame(frame: cgImage)
         } else {
             return output
         }
+    }
+
+    func filterMinFrame(frame: CIImage, prevFrame: CIImage) -> CIImage {
+        let minFilter = CIBlendKernel.componentMin
+        let output = minFilter.apply(foreground: frame, background: prevFrame)!
+        return output
     }
 
     // difference value between 2 processed images
@@ -277,7 +288,11 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     }
 
     // preprocessing images before they're differenced
-    func preprocessFrame(_ image: CIImage, blurRadius: Double = 2) -> CIImage {
+    func preprocessFrame(
+        _ image: CIImage,
+        blurRadius: Double = 2,
+        gamma: Float = 4
+    ) -> CIImage {
         let falseColorFilter = CIFilter.falseColor()
         falseColorFilter.color0 = .black
         falseColorFilter.color1 = .white
@@ -296,11 +311,11 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
             )
         )
 
-        let gamma = CIFilter.gammaAdjust()
-        gamma.inputImage = gray
-        gamma.power = 4
+        let gammaFilter = CIFilter.gammaAdjust()
+        gammaFilter.inputImage = gray
+        gammaFilter.power = gamma
 
-        let output = gamma.outputImage!
+        let output = gammaFilter.outputImage!
         return output
     }
 
@@ -342,21 +357,17 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         from connection: AVCaptureConnection
     ) {
         let captureTimestamp = sampleBuffer.presentationTimeStamp
-
-        let framePeried = captureTimestamp - prevCaptureTimestamp
         prevCaptureTimestamp = captureTimestamp
 
-        defer { count = (count + 1) % maxFrames }
+        defer { chunkFrameIndex = (chunkFrameIndex + 1) % framesPerChunk }
 
-        if count > 0 { return }
-        let processPeriod = captureTimestamp - prevProcessTimestamp
-        // TODO: compute FPS if we care
         prevProcessTimestamp = captureTimestamp
 
         guard let imageBuffer = sampleBuffer.imageBuffer?.copy() ?? nil
         else { return }
 
         let inputImage = CIImage(cvPixelBuffer: imageBuffer)
+        defer { self.prevCapturedFrame = inputImage }
 
         let processedFrame = preprocessFrame(
             inputImage,
@@ -364,15 +375,32 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         )
         defer { self.prevProcessedFrame = processedFrame }
 
+        // TODO: keep `framesPerChunk` frames
+        if chunkFrameIndex > 0 { return }
+
+        // TODO: set prevCapturedFrame to nil
+
+//        var minFrame: CIImage? = nil
+//        if let prevCapturedFrame {
+//            print("min")
+//            minFrame = filterMinFrame(
+//                frame: inputImage,
+//                prevFrame: prevCapturedFrame
+//            )
+//        } else {
+//            print("blah")
+//        }
+
+        prevCapturedFrame = nil
+
         guard let prevProcessedFrame else { return }
 
-        let maskImage = imageDifference(
+        guard let maskImage = imageDifference(
             image: processedFrame,
             image2: prevProcessedFrame
-        )
+        ) else { return }
 
-        guard let maskImage else { return }
-
+        // this is expensive! and maybe worthless!
         let currentLightLevel = averageBrightness(maskImage) ?? 0
         defer { prevLightLevel = currentLightLevel }
         let diff = abs(currentLightLevel - prevLightLevel)
