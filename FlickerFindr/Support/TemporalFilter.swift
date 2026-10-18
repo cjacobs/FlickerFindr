@@ -10,35 +10,33 @@ import Foundation
 import SwiftUI
 
 class TemporalFilter {
-    private var prevFrame: CIImage? = nil
+    private var accumulator: CIImageAccumulator? = nil
     var coeff1: CGFloat
     var coeff2: CGFloat
-
-    init(coeff1: CGFloat, coeff2: CGFloat) {
+    var context: CIContext
+    
+    init(context: CIContext, coeff1: CGFloat, coeff2: CGFloat) {
         self.coeff1 = coeff1
         self.coeff2 = coeff2
+        self.context = context
     }
 
-    func processFrame(frame cgFrame: CGImage) -> CIImage {
-        let frame:CIImage = CIImage(cgImage: cgFrame)
-
-        guard let prevFrame else {
-            prevFrame = frame
+    func processFrame(frame: CIImage) -> CIImage {
+        guard let accumulator else {
+            accumulator = CIImageAccumulator(extent: frame.extent, format: context.workingFormat)
+            accumulator?.setImage(frame)
             print("first frame")
             return frame
         }
 
-        // maybe we need to use a CIImageAccumulator?
-        
         let filter = CIAvgFilter()
-        // note: if I pass in 'frame' for both images, the app runs at normal (high) framerate
-        // if I pass in 'prevFrame' for both, it bogs down and crashes
         filter.inputImage1 = frame
-        filter.inputImage2 = prevFrame
+        filter.inputImage2 = accumulator.image()
         filter.a1 = Float(coeff1)
         filter.a2 = Float(coeff2)
-        let output = filter.outputImage!
-        self.prevFrame = output
+        guard let output = filter.outputImage else { print("failed")
+            return frame }
+        self.accumulator?.setImage(output)
         return output
     }
 }

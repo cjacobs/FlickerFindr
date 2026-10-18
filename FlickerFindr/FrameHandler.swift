@@ -35,10 +35,7 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     private var prevProcessedFrame: CIImage? = nil
     private var prevDisplayFrame: CIImage? = nil
     private var prevLightLevel: Float = 0.0
-    private let temporalFilter = TemporalFilter(
-        coeff1: CGFloat(0.4),
-        coeff2: CGFloat(0.6)
-    )
+    private let temporalFilter: TemporalFilter
 
     var currentDevice: AVCaptureDevice? = nil
 
@@ -73,6 +70,11 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     override init() {
         self.droppedFrames = TimeIntervalList<Int>(span: 1.0)
         self.frameDifferenceValues = TimeIntervalFrameList(span: 1.0)
+        self.temporalFilter = TemporalFilter(
+            context: context,
+            coeff1: CGFloat(0.4),
+            coeff2: CGFloat(0.6)
+        )
         super.init()
     }
 
@@ -231,6 +233,13 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         guard !deviceMap.isEmpty else {
             fatalError("Missing adequate capture devices.")
         }
+
+        // print(deviceMap.keys)
+        // returns:
+        //        [[Back Camera][com.apple.avfoundation.avcapturedevice.built-in_video:0],
+        //         [Back Telephoto Camera][com.apple.avfoundation.avcapturedevice.built-in_video:2],
+        //         [Back Ultra Wide Camera][com.apple.avfoundation.avcapturedevice.built-in_video:5]]
+
         return deviceMap
     }
 
@@ -239,11 +248,7 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         let output = multFilter.apply(foreground: frame, background: mask)!
 
         if useTemporalFilter {
-            guard let cgImage = context.createCGImage(
-                output,
-                from: output.extent) else { return output }
-
-            return temporalFilter.processFrame(frame: cgImage)
+            return temporalFilter.processFrame(frame: output)
         } else {
             return output
         }
@@ -380,25 +385,27 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
 
         // TODO: set prevCapturedFrame to nil
 
-//        var minFrame: CIImage? = nil
-//        if let prevCapturedFrame {
-//            print("min")
-//            minFrame = filterMinFrame(
-//                frame: inputImage,
-//                prevFrame: prevCapturedFrame
-//            )
-//        } else {
-//            print("blah")
-//        }
+        //        var minFrame: CIImage? = nil
+        //        if let prevCapturedFrame {
+        //            print("min")
+        //            minFrame = filterMinFrame(
+        //                frame: inputImage,
+        //                prevFrame: prevCapturedFrame
+        //            )
+        //        } else {
+        //            print("blah")
+        //        }
 
         prevCapturedFrame = nil
 
         guard let prevProcessedFrame else { return }
 
-        guard let maskImage = imageDifference(
-            image: processedFrame,
-            image2: prevProcessedFrame
-        ) else { return }
+        guard
+            let maskImage = imageDifference(
+                image: processedFrame,
+                image2: prevProcessedFrame
+            )
+        else { return }
 
         // this is expensive! and maybe worthless!
         let currentLightLevel = averageBrightness(maskImage) ?? 0
