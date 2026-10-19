@@ -110,7 +110,6 @@ class MaxFilter {
             return frame
         }
         self.accumulator?.setImage(output)
-        print("max!")
         return output
     }
 }

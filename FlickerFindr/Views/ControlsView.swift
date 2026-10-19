@@ -11,7 +11,7 @@ import SwiftUI
 struct ControlsView: View {
     @Bindable var model: FrameHandler
     @Binding var isRunning: Bool
-    
+    @State var minmaxIsAlternating:Bool = true
     @State private var cameraSelection: AVCaptureDevice? = nil
 
     var body: some View {
@@ -48,10 +48,13 @@ struct ControlsView: View {
                     }
                 }
 
-                Toggle("Mask", isOn: $model.useMask)
-                Toggle("IIR filt", isOn: $model.useIIRFilter)
                 Toggle("min filt", isOn: $model.useMinFilter)
                 Toggle("max filt", isOn: $model.useMaxFilter)
+                Toggle("minmax type", isOn: $minmaxIsAlternating).onChange(of: minmaxIsAlternating) {
+                    model.minMaxDisplayType = minmaxIsAlternating ? .alternating : .diff
+                }
+                Toggle("Mask", isOn: $model.useMask)
+                Toggle("IIR filt", isOn: $model.useIIRFilter)
             }
 
             Section(header: Text("Camera controls"))  // model picker

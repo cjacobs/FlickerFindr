@@ -5,6 +5,8 @@ TODO (this branch):
 - [x] have `HistoryView` depend on `FrameHandler.currentTimestamp` instead of using a `TimelineView`
 - [x] add a pause button that pauses the frame grabbing (and therefore the updating of timestamp-dependent views
 - [ ] add whole-frame (instead of per-pixel) versions of min and max filters
+- [ ] add "diff" version of min + max: instead of alternating, show the diff
+- [ ] convert existing "mask" code to Metal
 
 
 TODO:

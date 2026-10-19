@@ -28,7 +28,7 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     var divisorConstant: CGFloat = 0.2
     var useMinFilter = false
     var useMaxFilter = false
-    var useMask = true
+    var useMask = false
     var useIIRFilter = false
 
     private var chunkFrameIndex = 0
@@ -38,10 +38,19 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     private var prevProcessedFrame: CIImage? = nil
     private var prevDisplayFrame: CIImage? = nil
     private var prevLightLevel: Float = 0.0
+
+    enum MinMaxDisplay {
+        case alternating
+        case diff
+    }
+
+    private let diffFilter = CIFilter.colorAbsoluteDifference()
     private let minFilter: MinFilter
     private let maxFilter: MaxFilter
     private let iirFilter: IIRFilter
     private var isMinPhase: Bool = true
+    var minMaxDisplayType: MinMaxDisplay = .alternating
+
     var currentDevice: AVCaptureDevice? = nil
 
     typealias DeviceMap = [AVCaptureDevice: [(
@@ -262,16 +271,25 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         }
     }
 
+    func computeDiff(image1: CIImage, image2: CIImage) -> CIImage {
+        diffFilter.inputImage = image1
+        diffFilter.inputImage2 = image2
+        let diffImage = diffFilter.outputImage!
+        return diffImage
+    }
+
     // difference value between 2 processed images
     // TODO: implement this in Metal
     func makeMaskImage(currentFrame: CIImage, prevFrame: CIImage) -> CIImage? {
-        let diffFilter = CIFilter.colorAbsoluteDifference()
         diffFilter.inputImage = currentFrame
         diffFilter.inputImage2 = prevFrame
         let diffImage = diffFilter.outputImage!
 
         let maxFilter = CIBlendKernel.componentMax
-        let maxImage = maxFilter.apply(foreground: currentFrame, background: prevFrame)!
+        let maxImage = maxFilter.apply(
+            foreground: currentFrame,
+            background: prevFrame
+        )!
 
         let constImage = CIImage(
             color: CIColor(
@@ -295,6 +313,21 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         return divideImage
     }
 
+    func blurImage(_ image: CIImage, blurRadius: Double) ->CIImage {
+        let result = image.applyingFilter(
+            "CIGaussianBlur",
+            parameters: [
+                kCIInputRadiusKey: NSNumber(value: blurRadius)
+            ]
+        ).cropped(
+            to: image.extent.insetBy(
+                dx: CGFloat(blurRadius),
+                dy: CGFloat(blurRadius)
+            )
+        )
+        return result
+    }
+    
     // preprocessing images before they're differenced
     func preprocessFrame(
         _ image: CIImage,
@@ -350,28 +383,36 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         return Float(data[1]) / 255
     }
 
-    func getDisplayFrame(frame: CIImage, mask: CIImage) -> CIImage
-    {
-        let result = if useMinFilter && useMaxFilter {
-            isMinPhase ? minFilter.outputImage : maxFilter.outputImage
-        } else if useMinFilter{
-            minFilter.outputImage
+    func getDisplayFrame(frame: CIImage, mask: CIImage) -> CIImage {
+        let result =
+            if useMinFilter && useMaxFilter {
+                switch minMaxDisplayType {
+                case .alternating:
+                    isMinPhase ? minFilter.outputImage : maxFilter.outputImage
+                case .diff:
+                    computeDiff(
+                        image1: minFilter.outputImage!,
+                        image2: maxFilter.outputImage!
+                    )
+                }
+
+            } else if useMinFilter {
+                minFilter.outputImage
+            } else if useMaxFilter {
+                maxFilter.outputImage
+            } else if useMask {
+                filterDisplayFrame(frame: frame, mask: mask)
+            } else {
+                frame
+            }
+
+        if minMaxDisplayType == .alternating {
+            isMinPhase.toggle()
         }
-        else if useMaxFilter {
-            maxFilter.outputImage
-        }
-        else if useMask {
-            filterDisplayFrame(frame: frame, mask: mask)
-        }
-        else {
-            frame
-        }
-        
-        isMinPhase.toggle()
+
         return result ?? frame
     }
 
-    
 }
 
 //
@@ -397,30 +438,34 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         guard let imageBuffer = sampleBuffer.imageBuffer?.copy() ?? nil
         else { return }
 
-        let inputImage = CIImage(cvPixelBuffer: imageBuffer)
-        defer { self.prevCapturedFrame = inputImage }
+        let inputFrame = CIImage(cvPixelBuffer: imageBuffer)
+        
+        defer { self.prevCapturedFrame = inputFrame }
 
         let processedFrame = preprocessFrame(
-            inputImage,
+            inputFrame,
             blurRadius: self.blurRadius
         )
         defer { self.prevProcessedFrame = processedFrame }
 
         if useMinFilter {
-            minFilter.processFrame(frame: inputImage)
+            minFilter.processFrame(frame: inputFrame)
         }
 
         if useMaxFilter {
-            maxFilter.processFrame(frame: inputImage)
+            maxFilter.processFrame(frame: inputFrame)
         }
 
         if chunkFrameIndex > 0 { return }
         // the following only happens once per `framesPerUpdate` frames
-        
+
         guard let prevProcessedFrame else { return }
-        
+
         guard
-            let maskImage = makeMaskImage(currentFrame: processedFrame, prevFrame: prevProcessedFrame)
+            let maskImage = makeMaskImage(
+                currentFrame: processedFrame,
+                prevFrame: prevProcessedFrame
+            )
         else { return }
 
         // this is expensive! and maybe worthless!
@@ -433,9 +478,8 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         )
         self.withMutation(keyPath: \.frameDifferenceValues) {}
 
+        let displayFrame = getDisplayFrame(frame: inputFrame, mask: maskImage)
 
-        let displayFrame = getDisplayFrame(frame: inputImage, mask: maskImage)
-        
         minFilter.reset()
         maxFilter.reset()
 
