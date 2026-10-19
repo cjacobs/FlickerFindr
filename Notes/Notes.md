@@ -1,9 +1,10 @@
 #  <#Notes#>
 TODO (this branch):
-- [ ] switch to using sample time instead of `Date` time
-- [ ] have `FrameHandler` keep the current timestamp
-- [ ] have `HistoryView` depend on `FrameHandler.currentTimestamp` instead of using a `TimelineView`
-- [ ] add a pause button that pauses the frame grabbing (and therefore the updating of timestamp-dependent views
+- [x] switch to using sample time instead of `Date` time
+- [x] have `FrameHandler` keep the current timestamp
+- [x] have `HistoryView` depend on `FrameHandler.currentTimestamp` instead of using a `TimelineView`
+- [x] add a pause button that pauses the frame grabbing (and therefore the updating of timestamp-dependent views
+- [ ] add whole-frame (instead of per-pixel) versions of min and max filters
 
 
 TODO:

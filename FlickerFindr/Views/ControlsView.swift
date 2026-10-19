@@ -48,7 +48,10 @@ struct ControlsView: View {
                     }
                 }
 
-                Toggle("temp filt", isOn: $model.useTemporalFilter)
+                Toggle("Mask", isOn: $model.useMask)
+                Toggle("IIR filt", isOn: $model.useIIRFilter)
+                Toggle("min filt", isOn: $model.useMinFilter)
+                Toggle("max filt", isOn: $model.useMaxFilter)
             }
 
             Section(header: Text("Camera controls"))  // model picker

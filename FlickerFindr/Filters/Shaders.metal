@@ -39,3 +39,20 @@ using namespace metal;
     return float4(blendColor, 1.0);
 }
 
+
+// this is also a CIColorKernel (I couldn't get it to work as a CIBlendKernel)
+[[ stitchable ]] float4 min(coreimage::sample_t foreground, coreimage::sample_t background, coreimage::destination dest) {
+
+    // using green channel as intensity for now
+    auto blendColor = (foreground.g < background.g) ? foreground.rgb : background.rgb;
+    return float4(blendColor, 1.0);
+}
+
+// this is also a CIColorKernel (I couldn't get it to work as a CIBlendKernel)
+[[ stitchable ]] float4 max(coreimage::sample_t foreground, coreimage::sample_t background, coreimage::destination dest) {
+
+    // using green channel as intensity for now
+    auto blendColor = (foreground.g > background.g) ? foreground.rgb : background.rgb;
+    return float4(blendColor, 1.0);
+}
+

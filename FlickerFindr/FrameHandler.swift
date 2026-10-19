@@ -26,17 +26,22 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     var isRunning: Bool = false
     var blurRadius: Double = 20
     var divisorConstant: CGFloat = 0.2
-    var useTemporalFilter = false
+    var useMinFilter = false
+    var useMaxFilter = false
+    var useMask = true
+    var useIIRFilter = false
 
     private var chunkFrameIndex = 0
-    private let framesPerChunk = 2
+    private let framesPerUpdate = 8
 
     private var prevCapturedFrame: CIImage? = nil
     private var prevProcessedFrame: CIImage? = nil
     private var prevDisplayFrame: CIImage? = nil
     private var prevLightLevel: Float = 0.0
-    private let temporalFilter: TemporalFilter
-
+    private let minFilter: MinFilter
+    private let maxFilter: MaxFilter
+    private let iirFilter: IIRFilter
+    private var isMinPhase: Bool = true
     var currentDevice: AVCaptureDevice? = nil
 
     typealias DeviceMap = [AVCaptureDevice: [(
@@ -70,11 +75,14 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     override init() {
         self.droppedFrames = TimeIntervalList<Int>(span: 1.0)
         self.frameDifferenceValues = TimeIntervalFrameList(span: 1.0)
-        self.temporalFilter = TemporalFilter(
+        self.iirFilter = IIRFilter(
             context: context,
             coeff1: CGFloat(0.4),
             coeff2: CGFloat(0.6)
         )
+        self.minFilter = MinFilter(context: context)
+        self.maxFilter = MaxFilter(context: context)
+
         super.init()
     }
 
@@ -247,28 +255,23 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         let multFilter = CIBlendKernel.componentMultiply
         let output = multFilter.apply(foreground: frame, background: mask)!
 
-        if useTemporalFilter {
-            return temporalFilter.processFrame(frame: output)
+        if useIIRFilter {
+            return iirFilter.processFrame(frame: output)
         } else {
             return output
         }
     }
 
-    func filterMinFrame(frame: CIImage, prevFrame: CIImage) -> CIImage {
-        let minFilter = CIBlendKernel.componentMin
-        let output = minFilter.apply(foreground: frame, background: prevFrame)!
-        return output
-    }
-
     // difference value between 2 processed images
-    func imageDifference(image: CIImage, image2: CIImage) -> CIImage? {
+    // TODO: implement this in Metal
+    func makeMaskImage(currentFrame: CIImage, prevFrame: CIImage) -> CIImage? {
         let diffFilter = CIFilter.colorAbsoluteDifference()
-        diffFilter.inputImage = image
-        diffFilter.inputImage2 = image2
+        diffFilter.inputImage = currentFrame
+        diffFilter.inputImage2 = prevFrame
         let diffImage = diffFilter.outputImage!
 
         let maxFilter = CIBlendKernel.componentMax
-        let maxImage = maxFilter.apply(foreground: image, background: image2)!
+        let maxImage = maxFilter.apply(foreground: currentFrame, background: prevFrame)!
 
         let constImage = CIImage(
             color: CIColor(
@@ -347,6 +350,28 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
         return Float(data[1]) / 255
     }
 
+    func getDisplayFrame(frame: CIImage, mask: CIImage) -> CIImage
+    {
+        let result = if useMinFilter && useMaxFilter {
+            isMinPhase ? minFilter.outputImage : maxFilter.outputImage
+        } else if useMinFilter{
+            minFilter.outputImage
+        }
+        else if useMaxFilter {
+            maxFilter.outputImage
+        }
+        else if useMask {
+            filterDisplayFrame(frame: frame, mask: mask)
+        }
+        else {
+            frame
+        }
+        
+        isMinPhase.toggle()
+        return result ?? frame
+    }
+
+    
 }
 
 //
@@ -361,10 +386,11 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
+        print(chunkFrameIndex)
         let captureTimestamp = sampleBuffer.presentationTimeStamp
         prevCaptureTimestamp = captureTimestamp
 
-        defer { chunkFrameIndex = (chunkFrameIndex + 1) % framesPerChunk }
+        defer { chunkFrameIndex = (chunkFrameIndex + 1) % framesPerUpdate }
 
         prevProcessTimestamp = captureTimestamp
 
@@ -380,31 +406,21 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         )
         defer { self.prevProcessedFrame = processedFrame }
 
-        // TODO: keep `framesPerChunk` frames
+        if useMinFilter {
+            minFilter.processFrame(frame: inputImage)
+        }
+
+        if useMaxFilter {
+            maxFilter.processFrame(frame: inputImage)
+        }
+
         if chunkFrameIndex > 0 { return }
-
-        // TODO: set prevCapturedFrame to nil
-
-        //        var minFrame: CIImage? = nil
-        //        if let prevCapturedFrame {
-        //            print("min")
-        //            minFrame = filterMinFrame(
-        //                frame: inputImage,
-        //                prevFrame: prevCapturedFrame
-        //            )
-        //        } else {
-        //            print("blah")
-        //        }
-
-        prevCapturedFrame = nil
-
+        // the following only happens once per `framesPerUpdate` frames
+        
         guard let prevProcessedFrame else { return }
-
+        
         guard
-            let maskImage = imageDifference(
-                image: processedFrame,
-                image2: prevProcessedFrame
-            )
+            let maskImage = makeMaskImage(currentFrame: processedFrame, prevFrame: prevProcessedFrame)
         else { return }
 
         // this is expensive! and maybe worthless!
@@ -417,10 +433,11 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         )
         self.withMutation(keyPath: \.frameDifferenceValues) {}
 
-        let displayFrame = filterDisplayFrame(
-            frame: inputImage,
-            mask: maskImage
-        )
+
+        let displayFrame = getDisplayFrame(frame: inputImage, mask: maskImage)
+        
+        minFilter.reset()
+        maxFilter.reset()
 
         guard
             let cgImage = context.createCGImage(

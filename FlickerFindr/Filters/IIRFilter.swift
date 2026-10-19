@@ -9,12 +9,13 @@ import CoreImage
 import Foundation
 import SwiftUI
 
-class TemporalFilter {
+class IIRFilter {
     private var accumulator: CIImageAccumulator? = nil
     var coeff1: CGFloat
     var coeff2: CGFloat
     var context: CIContext
-    
+    private let filter = CIAvgFilter()
+
     init(context: CIContext, coeff1: CGFloat, coeff2: CGFloat) {
         self.coeff1 = coeff1
         self.coeff2 = coeff2
@@ -29,7 +30,6 @@ class TemporalFilter {
             return frame
         }
 
-        let filter = CIAvgFilter()
         filter.inputImage1 = frame
         filter.inputImage2 = accumulator.image()
         filter.a1 = Float(coeff1)

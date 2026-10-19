@@ -11,7 +11,7 @@
 		4415C48C3075E7C400218BBD /* Histogram.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C48B3075E7C400218BBD /* Histogram.swift */; };
 		4415C48E3075E7CC00218BBD /* HistogramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C48D3075E7CC00218BBD /* HistogramView.swift */; };
 		4415C4903076BBAD00218BBD /* TimeIntervalList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C48F3076BBAD00218BBD /* TimeIntervalList.swift */; };
-		4415C494307960F600218BBD /* TemporalFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C493307960F600218BBD /* TemporalFilter.swift */; };
+		4415C494307960F600218BBD /* IIRFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C493307960F600218BBD /* IIRFilter.swift */; };
 		4415C4963079735600218BBD /* CVPixelBufferExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4415C4953079735600218BBD /* CVPixelBufferExtension.swift */; };
 		44A1A3042B5F0A1200DAB24F /* FlickerFindrApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3032B5F0A1200DAB24F /* FlickerFindrApp.swift */; };
 		44A1A3062B5F0A1200DAB24F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A1A3052B5F0A1200DAB24F /* ContentView.swift */; };
@@ -27,7 +27,8 @@
 		44D115C8307B159E00750B27 /* ControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D115C7307B159E00750B27 /* ControlsView.swift */; };
 		44D115CA307E941C00750B27 /* InfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D115C9307E941C00750B27 /* InfoView.swift */; };
 		44D115D430840D3B00750B27 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 44D115D330840D3B00750B27 /* Shaders.metal */; };
-		44D115D63084133300750B27 /* Filters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D115D53084133300750B27 /* Filters.swift */; };
+		44D115D63084133300750B27 /* CIFilters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D115D53084133300750B27 /* CIFilters.swift */; };
+		44DE9DA130858E980094A12A /* MinMaxFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44DE9DA030858E980094A12A /* MinMaxFilter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,7 +53,7 @@
 		4415C48B3075E7C400218BBD /* Histogram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Histogram.swift; sourceTree = "<group>"; };
 		4415C48D3075E7CC00218BBD /* HistogramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistogramView.swift; sourceTree = "<group>"; };
 		4415C48F3076BBAD00218BBD /* TimeIntervalList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeIntervalList.swift; sourceTree = "<group>"; };
-		4415C493307960F600218BBD /* TemporalFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemporalFilter.swift; sourceTree = "<group>"; };
+		4415C493307960F600218BBD /* IIRFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIRFilter.swift; sourceTree = "<group>"; };
 		4415C4953079735600218BBD /* CVPixelBufferExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CVPixelBufferExtension.swift; sourceTree = "<group>"; };
 		44A1A3002B5F0A1200DAB24F /* FlickerFindr.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlickerFindr.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		44A1A3032B5F0A1200DAB24F /* FlickerFindrApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlickerFindrApp.swift; sourceTree = "<group>"; };
@@ -71,7 +72,8 @@
 		44D115C7307B159E00750B27 /* ControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlsView.swift; sourceTree = "<group>"; };
 		44D115C9307E941C00750B27 /* InfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoView.swift; sourceTree = "<group>"; };
 		44D115D330840D3B00750B27 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
-		44D115D53084133300750B27 /* Filters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Filters.swift; sourceTree = "<group>"; };
+		44D115D53084133300750B27 /* CIFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CIFilters.swift; sourceTree = "<group>"; };
+		44DE9DA030858E980094A12A /* MinMaxFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinMaxFilter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -123,7 +125,6 @@
 				4415C4893075E7BB00218BBD /* RingBuffer.swift */,
 				4415C48B3075E7C400218BBD /* Histogram.swift */,
 				4415C48F3076BBAD00218BBD /* TimeIntervalList.swift */,
-				4415C493307960F600218BBD /* TemporalFilter.swift */,
 				4415C4953079735600218BBD /* CVPixelBufferExtension.swift */,
 			);
 			path = Support;
@@ -193,7 +194,9 @@
 			isa = PBXGroup;
 			children = (
 				44D115D330840D3B00750B27 /* Shaders.metal */,
-				44D115D53084133300750B27 /* Filters.swift */,
+				44D115D53084133300750B27 /* CIFilters.swift */,
+				4415C493307960F600218BBD /* IIRFilter.swift */,
+				44DE9DA030858E980094A12A /* MinMaxFilter.swift */,
 			);
 			path = Filters;
 			sourceTree = "<group>";
@@ -329,7 +332,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4415C48C3075E7C400218BBD /* Histogram.swift in Sources */,
-				44D115D63084133300750B27 /* Filters.swift in Sources */,
+				44D115D63084133300750B27 /* CIFilters.swift in Sources */,
 				4415C4903076BBAD00218BBD /* TimeIntervalList.swift in Sources */,
 				4415C48E3075E7CC00218BBD /* HistogramView.swift in Sources */,
 				44D115CA307E941C00750B27 /* InfoView.swift in Sources */,
@@ -340,8 +343,9 @@
 				44A1A3362B5F50E200DAB24F /* FrameView.swift in Sources */,
 				44D115D430840D3B00750B27 /* Shaders.metal in Sources */,
 				44A1A3062B5F0A1200DAB24F /* ContentView.swift in Sources */,
+				44DE9DA130858E980094A12A /* MinMaxFilter.swift in Sources */,
 				44AC43513081794500E89EF0 /* Comparable+clamped.swift in Sources */,
-				4415C494307960F600218BBD /* TemporalFilter.swift in Sources */,
+				4415C494307960F600218BBD /* IIRFilter.swift in Sources */,
 				44A1A3042B5F0A1200DAB24F /* FlickerFindrApp.swift in Sources */,
 				44D115C8307B159E00750B27 /* ControlsView.swift in Sources */,
 			);

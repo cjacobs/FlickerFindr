@@ -110,3 +110,47 @@ class CIAvgFilter:CIFilter {
         )
     }
 }
+
+class CIMinFilter:CIFilter {
+    var inputImage1: CIImage?
+    var inputImage2: CIImage?
+    
+    static var kernel: CIColorKernel = {
+        let url = Bundle.main.url(forResource: "default", withExtension: "metallib")!
+        let data = try! Data(contentsOf: url)
+        return try! CIColorKernel(functionName: "min", fromMetalLibraryData: data)
+    }()
+
+    override var outputImage: CIImage? {
+        guard let input1 = inputImage1 else { return nil }
+        guard let input2 = inputImage2 else { return nil }
+
+        // Pass the image extent and arguments into apply(_:arguments:options:)
+        return Self.kernel.apply(
+            extent: input1.extent,
+            arguments: [input1, input2]
+        )
+    }
+}
+
+class CIMaxFilter:CIFilter {
+    var inputImage1: CIImage?
+    var inputImage2: CIImage?
+    
+    static var kernel: CIColorKernel = {
+        let url = Bundle.main.url(forResource: "default", withExtension: "metallib")!
+        let data = try! Data(contentsOf: url)
+        return try! CIColorKernel(functionName: "max", fromMetalLibraryData: data)
+    }()
+
+    override var outputImage: CIImage? {
+        guard let input1 = inputImage1 else { return nil }
+        guard let input2 = inputImage2 else { return nil }
+
+        // Pass the image extent and arguments into apply(_:arguments:options:)
+        return Self.kernel.apply(
+            extent: input1.extent,
+            arguments: [input1, input2]
+        )
+    }
+}
