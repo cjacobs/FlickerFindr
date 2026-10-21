@@ -12,8 +12,13 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import Foundation
 
-typealias FrameInfo = (difference: Float, frame: CGImage?)
+typealias FrameInfo = (difference: Float, frame: CGImage?, dropped: Bool)
 typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
+
+enum MinMaxDisplay : String, CaseIterable, Identifiable {
+    case alternating, diff
+    var id: Self { self }
+}
 
 @Observable class FrameHandler: NSObject {
     var frame: CGImage? = nil
@@ -32,17 +37,12 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
     var useIIRFilter = false
 
     private var chunkFrameIndex = 0
-    private let framesPerUpdate = 8
+    var framesPerUpdate = 8
 
     private var prevCapturedFrame: CIImage? = nil
     private var prevProcessedFrame: CIImage? = nil
     private var prevDisplayFrame: CIImage? = nil
     private var prevLightLevel: Float = 0.0
-
-    enum MinMaxDisplay {
-        case alternating
-        case diff
-    }
 
     private let diffFilter = CIFilter.colorAbsoluteDifference()
     private let minFilter: MinFilter
@@ -195,7 +195,9 @@ typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
             self,
             queue: DispatchQueue(label: "sampleBufferQueue")
         )
-        //        videoOutput.alwaysDiscardsLateVideoFrames = false
+        
+        // TODO: make `alwaysDiscardsLateVideoFrames` be selectable
+        videoOutput.alwaysDiscardsLateVideoFrames = false
         guard captureSession.canAddOutput(videoOutput) else { return }
         captureSession.addOutput(videoOutput)
 
@@ -473,7 +475,7 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         defer { prevLightLevel = currentLightLevel }
         let diff = abs(currentLightLevel - prevLightLevel)
         self.frameDifferenceValues.append(
-            (difference: diff, frame: nil),
+            (difference: diff, frame: nil, dropped: false),
             t: captureTimestamp
         )
         self.withMutation(keyPath: \.frameDifferenceValues) {}
@@ -506,6 +508,10 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
     ) {
         let timestamp = sampleBuffer.presentationTimeStamp
         self.frameDifferenceValues.currentTime = timestamp
+        self.frameDifferenceValues.append(
+            (difference: 1.0, frame: nil, dropped: true),
+            t: timestamp
+        )
 
         DispatchQueue.main.async { [unowned self] in
             self.droppedFrames.append(1, t: timestamp)
@@ -513,7 +519,6 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
 
-        /*
         let reason = CMGetAttachment(
             sampleBuffer,
             key: kCMSampleBufferAttachmentKey_DroppedFrameReason,
@@ -522,6 +527,5 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         print(
             "reason \(String(describing: reason))"
         )
-         */
     }
 }

@@ -5,40 +5,20 @@
 //  Created by Charles Jacobs on 10/17/26.
 //
 
-import Foundation
 import CoreImage
+import Foundation
 
 func getKernel(function: String) -> CIColorKernel {
-    let url = Bundle.main.url(forResource: "default",
-                              withExtension: "metallib")!
+    let url = Bundle.main.url(
+        forResource: "default",
+        withExtension: "metallib"
+    )!
     let data = try! Data(contentsOf: url)
-    return try! CIColorKernel(functionName: function,
-                              fromMetalLibraryData: data)
+    return try! CIColorKernel(
+        functionName: function,
+        fromMetalLibraryData: data
+    )
 }
-
-final class ChessboardFilter: CIFilter {
-    
-    // 1
-    @objc dynamic public var inputImage: CIImage?
-    @objc dynamic public var tileSize: Float = 0
-//    @objc dynamic public var fillColor:
-
-
-    // 2
-    override public var outputImage: CIImage? {
-        guard let input = inputImage else {
-            return nil
-        }
-        return Self.kernel.apply(extent: input.extent,
-                                 arguments: [input, tileSize])
-    }
-    
-    // 3
-    static private var kernel: CIColorKernel = { () -> CIColorKernel in
-        getKernel(function: "chessboard")
-    }()
-}
-
 
 // here, applyFilter and apply are methods on a controller object
 //func applyFilter() {
@@ -62,24 +42,26 @@ final class ChessboardFilter: CIFilter {
 //    return UIImage(cgImage: cgImage)
 //}
 
-
-
-
 class CIMultFilter: CIFilter {
     var inputImage: CIImage?
     var frac: Float = 1.0
-    
+
     // Create the kernel statically so it is compiled/loaded only once
     static var colorKernel: CIColorKernel = {
-        let url = Bundle.main.url(forResource: "default", withExtension: "metallib")!
+        let url = Bundle.main.url(
+            forResource: "default",
+            withExtension: "metallib"
+        )!
         let data = try! Data(contentsOf: url)
-        return try! CIColorKernel(functionName: "mult2", fromMetalLibraryData: data)
+        return try! CIColorKernel(
+            functionName: "mult2",
+            fromMetalLibraryData: data
+        )
     }()
-    
+
     override var outputImage: CIImage? {
         guard let input = inputImage else { return nil }
-        
-        // Pass the image extent and arguments into apply(_:arguments:options:)
+
         return CIMultFilter.colorKernel.apply(
             extent: input.extent,
             arguments: [input, frac]
@@ -87,23 +69,28 @@ class CIMultFilter: CIFilter {
     }
 }
 
-class CIAvgFilter:CIFilter {
+class CIAvgFilter: CIFilter {
     var inputImage1: CIImage?
     var inputImage2: CIImage?
     var a1: Float = 0
     var a2: Float = 0
-    
+
     static var kernel: CIColorKernel = {
-        let url = Bundle.main.url(forResource: "default", withExtension: "metallib")!
+        let url = Bundle.main.url(
+            forResource: "default",
+            withExtension: "metallib"
+        )!
         let data = try! Data(contentsOf: url)
-        return try! CIColorKernel(functionName: "filt", fromMetalLibraryData: data)
+        return try! CIColorKernel(
+            functionName: "filt",
+            fromMetalLibraryData: data
+        )
     }()
 
     override var outputImage: CIImage? {
         guard let input1 = inputImage1 else { return nil }
         guard let input2 = inputImage2 else { return nil }
 
-        // Pass the image extent and arguments into apply(_:arguments:options:)
         return Self.kernel.apply(
             extent: input1.extent,
             arguments: [input1, input2, a1, a2]
@@ -111,21 +98,36 @@ class CIAvgFilter:CIFilter {
     }
 }
 
-class CIMinFilter:CIFilter {
-    var inputImage1: CIImage?
-    var inputImage2: CIImage?
-    
+class CIBinaryFilter: CIFilter {
+    var inputImage1: CIImage? = nil
+    var inputImage2: CIImage? = nil
+
+    required override init() {
+        super.init()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+class CIMinFilter: CIBinaryFilter {
     static var kernel: CIColorKernel = {
-        let url = Bundle.main.url(forResource: "default", withExtension: "metallib")!
+        let url = Bundle.main.url(
+            forResource: "default",
+            withExtension: "metallib"
+        )!
         let data = try! Data(contentsOf: url)
-        return try! CIColorKernel(functionName: "min", fromMetalLibraryData: data)
+        return try! CIColorKernel(
+            functionName: "min",
+            fromMetalLibraryData: data
+        )
     }()
 
     override var outputImage: CIImage? {
         guard let input1 = inputImage1 else { return nil }
         guard let input2 = inputImage2 else { return nil }
 
-        // Pass the image extent and arguments into apply(_:arguments:options:)
         return Self.kernel.apply(
             extent: input1.extent,
             arguments: [input1, input2]
@@ -133,14 +135,66 @@ class CIMinFilter:CIFilter {
     }
 }
 
-class CIMaxFilter:CIFilter {
-    var inputImage1: CIImage?
-    var inputImage2: CIImage?
-    
+class CIMaxFilter: CIBinaryFilter {
     static var kernel: CIColorKernel = {
-        let url = Bundle.main.url(forResource: "default", withExtension: "metallib")!
+        let url = Bundle.main.url(
+            forResource: "default",
+            withExtension: "metallib"
+        )!
         let data = try! Data(contentsOf: url)
-        return try! CIColorKernel(functionName: "max", fromMetalLibraryData: data)
+        return try! CIColorKernel(
+            functionName: "max",
+            fromMetalLibraryData: data
+        )
+    }()
+
+    override var outputImage: CIImage? {
+        guard let input1 = inputImage1 else { return nil }
+        guard let input2 = inputImage2 else { return nil }
+
+        return Self.kernel.apply(
+            extent: input1.extent,
+            arguments: [input1, input2]
+        )
+    }
+}
+
+class CISumFilter: CIBinaryFilter {
+    static var kernel: CIColorKernel = {
+        let url = Bundle.main.url(
+            forResource: "default",
+            withExtension: "metallib"
+        )!
+        let data = try! Data(contentsOf: url)
+        return try! CIColorKernel(
+            functionName: "sum",
+            fromMetalLibraryData: data
+        )
+    }()
+
+    override var outputImage: CIImage? {
+        guard let input1 = inputImage1 else { return nil }
+        guard let input2 = inputImage2 else { return nil }
+
+        return Self.kernel.apply(
+            extent: input1.extent,
+            arguments: [input1, input2]
+        )
+    }
+}
+
+class CIMinMaxSumFilter: CIBinaryFilter {
+
+    static var kernel: CIColorKernel = {
+        let url = Bundle.main.url(
+            forResource: "default",
+            withExtension: "metallib"
+        )!
+        let data = try! Data(contentsOf: url)
+        return try! CIColorKernel(
+            functionName: "min_max_sum",
+            fromMetalLibraryData: data
+        )
     }()
 
     override var outputImage: CIImage? {

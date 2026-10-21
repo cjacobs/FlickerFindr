@@ -20,8 +20,8 @@ struct HistoryView: View {
     }
 
     var body: some View {
-        let displayInterval = (domain.upperBound-domain.lowerBound)
-        let firstTimeSeconds = datapoints.currentTime.seconds - displayInterval // (== LHS of graph
+        let displayInterval = (domain.upperBound - domain.lowerBound)
+        let firstTimeSeconds = datapoints.currentTime.seconds - displayInterval  // (== LHS of graph
         return Chart(data.enumerated(), id: \.offset) { element in
             let t = (element.element.time.seconds - firstTimeSeconds)
 
@@ -33,8 +33,8 @@ struct HistoryView: View {
                 y: .value("diff", element.element.value.difference)
             )
         }
-                .chartXScale(domain: 0.0...1.0)
-                .chartYScale(domain: 0.0 ... 1.0)
+        .chartXScale(domain: 0.0...1.0)
+        .chartYScale(domain: 0.0...1.0)
     }
 
 }

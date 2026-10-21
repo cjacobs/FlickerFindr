@@ -11,7 +11,6 @@ import SwiftUI
 struct ControlsView: View {
     @Bindable var model: FrameHandler
     @Binding var isRunning: Bool
-    @State var minmaxIsAlternating:Bool = true
     @State private var cameraSelection: AVCaptureDevice? = nil
 
     var body: some View {
@@ -28,17 +27,30 @@ struct ControlsView: View {
             }
             .disabled(isRunning)
         }
+        .controlSize(.regular)
         Form {
             Section(header: Text("Filtering controls")) {
+                HStack {
+                    Text("update period")
+                    Slider(value: .convert($model.framesPerUpdate), in: 1...8, step: 1)
+
+                }
+                Toggle("min filt", isOn: $model.useMinFilter)
+                Toggle("max filt", isOn: $model.useMaxFilter)
+                Picker("MinMax Display Type", selection: $model.minMaxDisplayType) {
+                    ForEach(MinMaxDisplay.allCases) { displayType in
+                        Text(displayType.rawValue.capitalized)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .disabled(!model.useMinFilter && !model.useMaxFilter)
 
                 HStack {
                     Text("blur:")
                     Slider(
                         value: $model.blurRadius,
                         in: 0.0...50.0,
-                    ) {
-                        Text("blur")
-                    }
+                    )
                 }
 
                 HStack {
@@ -48,11 +60,6 @@ struct ControlsView: View {
                     }
                 }
 
-                Toggle("min filt", isOn: $model.useMinFilter)
-                Toggle("max filt", isOn: $model.useMaxFilter)
-                Toggle("minmax type", isOn: $minmaxIsAlternating).onChange(of: minmaxIsAlternating) {
-                    model.minMaxDisplayType = minmaxIsAlternating ? .alternating : .diff
-                }
                 Toggle("Mask", isOn: $model.useMask)
                 Toggle("IIR filt", isOn: $model.useIIRFilter)
             }
