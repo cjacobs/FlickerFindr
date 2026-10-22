@@ -37,7 +37,7 @@ struct ControlsView: View {
                 }
                 Toggle("min filt", isOn: $model.useMinFilter)
                 Toggle("max filt", isOn: $model.useMaxFilter)
-                Picker("MinMax Display Type", selection: $model.minMaxDisplayType) {
+                Picker("MinMax Display", selection: $model.minMaxDisplayType) {
                     ForEach(MinMaxDisplay.allCases) { displayType in
                         Text(displayType.rawValue.capitalized)
                     }
@@ -60,7 +60,13 @@ struct ControlsView: View {
                     }
                 }
 
-                Toggle("Mask", isOn: $model.useMask)
+                Picker("Mask Display", selection: $model.maskDisplayType) {
+                    ForEach(MaskDisplay.allCases) { displayType in
+                        Text(displayType.rawValue.capitalized)
+                    }
+                }
+                .pickerStyle(.segmented)
+
                 Toggle("IIR filt", isOn: $model.useIIRFilter)
             }
 

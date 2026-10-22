@@ -61,3 +61,16 @@ using namespace metal;
     return float4(minVal, maxVal, sumVal, 1.0);
 }
 
+[[ stitchable ]] float4 color_mask(coreimage::sample_t foreground, coreimage::sample_t mask, coreimage::destination dest) {
+    const auto maskVal = clamp(mask[0], 0.0f, 1.0f);
+    const float3 red = float3(1.0, 0, 0);
+    const float3 yellow = float3(1.0, 1.00, 0);
+    const float3 green = float3(0, 1.00, 0);
+    const float greenAmt = maskVal < 0.5 ? 1-2*maskVal : 0;
+    const float yellowAmt = maskVal < 0.5 ? 2*maskVal : 1-2*(maskVal-0.5);
+    const float redAmt = maskVal < 0.5 ? 0 : 2*(maskVal-0.5);
+    
+    const float3 colormap = redAmt * red + yellowAmt * yellow + greenAmt * green;
+    return float4(colormap * foreground.g, 1.0);
+}
+

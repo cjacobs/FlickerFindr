@@ -15,8 +15,13 @@ import Foundation
 typealias FrameInfo = (difference: Float, frame: CGImage?, dropped: Bool)
 typealias TimeIntervalFrameList = TimeIntervalList<FrameInfo>
 
-enum MinMaxDisplay : String, CaseIterable, Identifiable {
+enum MinMaxDisplay: String, CaseIterable, Identifiable {
     case alternating, diff
+    var id: Self { self }
+}
+
+enum MaskDisplay: String, CaseIterable, Identifiable {
+    case raw, colormap, none
     var id: Self { self }
 }
 
@@ -33,7 +38,6 @@ enum MinMaxDisplay : String, CaseIterable, Identifiable {
     var divisorConstant: CGFloat = 0.2
     var useMinFilter = false
     var useMaxFilter = false
-    var useMask = false
     var useIIRFilter = false
 
     private var chunkFrameIndex = 0
@@ -42,14 +46,16 @@ enum MinMaxDisplay : String, CaseIterable, Identifiable {
     private var prevCapturedFrame: CIImage? = nil
     private var prevProcessedFrame: CIImage? = nil
     private var prevDisplayFrame: CIImage? = nil
-    private var prevLightLevel: Float = 0.0
+    private var prevAverageBrightness: Float = 0.0
 
     private let diffFilter = CIFilter.colorAbsoluteDifference()
     private let minFilter: MinFilter
     private let maxFilter: MaxFilter
+    private let colorMaskFilter = CIColorMaskFilter()
     private let iirFilter: IIRFilter
     private var isMinPhase: Bool = true
     var minMaxDisplayType: MinMaxDisplay = .alternating
+    var maskDisplayType: MaskDisplay = .none
 
     var currentDevice: AVCaptureDevice? = nil
 
@@ -195,7 +201,7 @@ enum MinMaxDisplay : String, CaseIterable, Identifiable {
             self,
             queue: DispatchQueue(label: "sampleBufferQueue")
         )
-        
+
         // TODO: make `alwaysDiscardsLateVideoFrames` be selectable
         videoOutput.alwaysDiscardsLateVideoFrames = false
         guard captureSession.canAddOutput(videoOutput) else { return }
@@ -262,15 +268,22 @@ enum MinMaxDisplay : String, CaseIterable, Identifiable {
         return deviceMap
     }
 
-    func filterDisplayFrame(frame: CIImage, mask: CIImage) -> CIImage {
+    func maskDisplayFrame(frame: CIImage, mask: CIImage) -> CIImage {
         let multFilter = CIBlendKernel.componentMultiply
-        let output = multFilter.apply(foreground: frame, background: mask)!
 
-        if useIIRFilter {
-            return iirFilter.processFrame(frame: output)
-        } else {
-            return output
+        let filter = colorMaskFilter
+        filter.inputImage1 = frame
+        filter.inputImage2 = mask
+
+        return switch maskDisplayType {
+        case .raw:
+            multFilter.apply(foreground: frame, background: mask)!
+        case .colormap:
+            filter.outputImage!
+        case .none:
+            frame
         }
+
     }
 
     func computeDiff(image1: CIImage, image2: CIImage) -> CIImage {
@@ -283,9 +296,7 @@ enum MinMaxDisplay : String, CaseIterable, Identifiable {
     // difference value between 2 processed images
     // TODO: implement this in Metal
     func makeMaskImage(currentFrame: CIImage, prevFrame: CIImage) -> CIImage? {
-        diffFilter.inputImage = currentFrame
-        diffFilter.inputImage2 = prevFrame
-        let diffImage = diffFilter.outputImage!
+        let diffImage = computeDiff(image1: currentFrame, image2: prevFrame)
 
         let maxFilter = CIBlendKernel.componentMax
         let maxImage = maxFilter.apply(
@@ -315,7 +326,7 @@ enum MinMaxDisplay : String, CaseIterable, Identifiable {
         return divideImage
     }
 
-    func blurImage(_ image: CIImage, blurRadius: Double) ->CIImage {
+    func blurImage(_ image: CIImage, blurRadius: Double) -> CIImage {
         let result = image.applyingFilter(
             "CIGaussianBlur",
             parameters: [
@@ -329,7 +340,7 @@ enum MinMaxDisplay : String, CaseIterable, Identifiable {
         )
         return result
     }
-    
+
     // preprocessing images before they're differenced
     func preprocessFrame(
         _ image: CIImage,
@@ -386,7 +397,7 @@ enum MinMaxDisplay : String, CaseIterable, Identifiable {
     }
 
     func getDisplayFrame(frame: CIImage, mask: CIImage) -> CIImage {
-        let result =
+        let filteredFrame =
             if useMinFilter && useMaxFilter {
                 switch minMaxDisplayType {
                 case .alternating:
@@ -402,8 +413,9 @@ enum MinMaxDisplay : String, CaseIterable, Identifiable {
                 minFilter.outputImage
             } else if useMaxFilter {
                 maxFilter.outputImage
-            } else if useMask {
-                filterDisplayFrame(frame: frame, mask: mask)
+            } else if maskDisplayType != .none {
+                maskDisplayFrame(frame: frame, mask: mask)
+
             } else {
                 frame
             }
@@ -412,7 +424,14 @@ enum MinMaxDisplay : String, CaseIterable, Identifiable {
             isMinPhase.toggle()
         }
 
-        return result ?? frame
+        let displayFrame =
+            if useIIRFilter {
+                iirFilter.processFrame(frame: filteredFrame!)
+            } else {
+                filteredFrame
+            }
+
+        return displayFrame ?? frame
     }
 
 }
@@ -441,7 +460,7 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         else { return }
 
         let inputFrame = CIImage(cvPixelBuffer: imageBuffer)
-        
+
         defer { self.prevCapturedFrame = inputFrame }
 
         let processedFrame = preprocessFrame(
@@ -471,9 +490,9 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         else { return }
 
         // this is expensive! and maybe worthless!
-        let currentLightLevel = averageBrightness(maskImage) ?? 0
-        defer { prevLightLevel = currentLightLevel }
-        let diff = abs(currentLightLevel - prevLightLevel)
+        let avgFrameDifference = averageBrightness(maskImage) ?? 0
+        defer { prevAverageBrightness = avgFrameDifference }
+        let diff = abs(avgFrameDifference - prevAverageBrightness)
         self.frameDifferenceValues.append(
             (difference: diff, frame: nil, dropped: false),
             t: captureTimestamp

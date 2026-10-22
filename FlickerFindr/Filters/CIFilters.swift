@@ -109,21 +109,22 @@ class CIBinaryFilter: CIFilter {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-}
 
-class CIMinFilter: CIBinaryFilter {
-    static var kernel: CIColorKernel = {
+    static func loadKernel(_ kernelName: String) -> CIColorKernel {
         let url = Bundle.main.url(
             forResource: "default",
             withExtension: "metallib"
         )!
         let data = try! Data(contentsOf: url)
         return try! CIColorKernel(
-            functionName: "min",
+            functionName: kernelName,
             fromMetalLibraryData: data
         )
-    }()
+    }
+}
 
+class CIMinFilter: CIBinaryFilter {
+    static var kernel: CIColorKernel = loadKernel("min")
     override var outputImage: CIImage? {
         guard let input1 = inputImage1 else { return nil }
         guard let input2 = inputImage2 else { return nil }
@@ -136,17 +137,7 @@ class CIMinFilter: CIBinaryFilter {
 }
 
 class CIMaxFilter: CIBinaryFilter {
-    static var kernel: CIColorKernel = {
-        let url = Bundle.main.url(
-            forResource: "default",
-            withExtension: "metallib"
-        )!
-        let data = try! Data(contentsOf: url)
-        return try! CIColorKernel(
-            functionName: "max",
-            fromMetalLibraryData: data
-        )
-    }()
+    static var kernel: CIColorKernel = loadKernel("max")
 
     override var outputImage: CIImage? {
         guard let input1 = inputImage1 else { return nil }
@@ -160,17 +151,7 @@ class CIMaxFilter: CIBinaryFilter {
 }
 
 class CISumFilter: CIBinaryFilter {
-    static var kernel: CIColorKernel = {
-        let url = Bundle.main.url(
-            forResource: "default",
-            withExtension: "metallib"
-        )!
-        let data = try! Data(contentsOf: url)
-        return try! CIColorKernel(
-            functionName: "sum",
-            fromMetalLibraryData: data
-        )
-    }()
+    static var kernel: CIColorKernel = loadKernel("sum")
 
     override var outputImage: CIImage? {
         guard let input1 = inputImage1 else { return nil }
@@ -185,23 +166,27 @@ class CISumFilter: CIBinaryFilter {
 
 class CIMinMaxSumFilter: CIBinaryFilter {
 
-    static var kernel: CIColorKernel = {
-        let url = Bundle.main.url(
-            forResource: "default",
-            withExtension: "metallib"
-        )!
-        let data = try! Data(contentsOf: url)
-        return try! CIColorKernel(
-            functionName: "min_max_sum",
-            fromMetalLibraryData: data
-        )
-    }()
+    static var kernel: CIColorKernel = loadKernel("min_max_sum")
 
     override var outputImage: CIImage? {
         guard let input1 = inputImage1 else { return nil }
         guard let input2 = inputImage2 else { return nil }
 
-        // Pass the image extent and arguments into apply(_:arguments:options:)
+        return Self.kernel.apply(
+            extent: input1.extent,
+            arguments: [input1, input2]
+        )
+    }
+}
+
+class CIColorMaskFilter: CIBinaryFilter {
+
+    static var kernel: CIColorKernel = loadKernel("color_mask")
+
+    override var outputImage: CIImage? {
+        guard let input1 = inputImage1 else { return nil }
+        guard let input2 = inputImage2 else { return nil }
+
         return Self.kernel.apply(
             extent: input1.extent,
             arguments: [input1, input2]
