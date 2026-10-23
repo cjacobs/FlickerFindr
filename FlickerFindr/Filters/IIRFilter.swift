@@ -26,7 +26,6 @@ class IIRFilter {
         guard let accumulator else {
             accumulator = CIImageAccumulator(extent: frame.extent, format: context.workingFormat)
             accumulator?.setImage(frame)
-            print("first frame")
             return frame
         }
 

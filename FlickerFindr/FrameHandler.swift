@@ -56,6 +56,9 @@ enum MaskDisplay: String, CaseIterable, Identifiable {
     private var isMinPhase: Bool = true
     var minMaxDisplayType: MinMaxDisplay = .alternating
     var maskDisplayType: MaskDisplay = .none
+    var useMask: Bool {
+        maskDisplayType != .none
+    }
 
     var currentDevice: AVCaptureDevice? = nil
 
@@ -203,7 +206,7 @@ enum MaskDisplay: String, CaseIterable, Identifiable {
         )
 
         // TODO: make `alwaysDiscardsLateVideoFrames` be selectable
-        videoOutput.alwaysDiscardsLateVideoFrames = false
+        videoOutput.alwaysDiscardsLateVideoFrames = true
         guard captureSession.canAddOutput(videoOutput) else { return }
         captureSession.addOutput(videoOutput)
 
@@ -373,7 +376,8 @@ enum MaskDisplay: String, CaseIterable, Identifiable {
         return output
     }
 
-    func averageBrightness(_ image: CIImage) -> Float? {
+    func averageBrightness(_ image: CIImage?) -> Float? {
+        guard let image else { return nil }
         let cropVector = CIVector(cgRect: image.extent)
 
         let outputImage = image.applyingFilter(
@@ -396,7 +400,7 @@ enum MaskDisplay: String, CaseIterable, Identifiable {
         return Float(data[1]) / 255
     }
 
-    func getDisplayFrame(frame: CIImage, mask: CIImage) -> CIImage {
+    func getDisplayFrame(frame: CIImage, mask: CIImage?) -> CIImage {
         let filteredFrame =
             if useMinFilter && useMaxFilter {
                 switch minMaxDisplayType {
@@ -413,9 +417,8 @@ enum MaskDisplay: String, CaseIterable, Identifiable {
                 minFilter.outputImage
             } else if useMaxFilter {
                 maxFilter.outputImage
-            } else if maskDisplayType != .none {
-                maskDisplayFrame(frame: frame, mask: mask)
-
+            } else if useMask {
+                maskDisplayFrame(frame: frame, mask: mask!)
             } else {
                 frame
             }
@@ -448,10 +451,9 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        print(chunkFrameIndex)
         let captureTimestamp = sampleBuffer.presentationTimeStamp
+               
         prevCaptureTimestamp = captureTimestamp
-
         defer { chunkFrameIndex = (chunkFrameIndex + 1) % framesPerUpdate }
 
         prevProcessTimestamp = captureTimestamp
@@ -477,32 +479,37 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
             maxFilter.processFrame(frame: inputFrame)
         }
 
-        if chunkFrameIndex > 0 { return }
+        if chunkFrameIndex != 0 { return }
         // the following only happens once per `framesPerUpdate` frames
 
         guard let prevProcessedFrame else { return }
 
-        guard
-            let maskImage = makeMaskImage(
+        let maskImage =
+            useMask
+            ? makeMaskImage(
                 currentFrame: processedFrame,
                 prevFrame: prevProcessedFrame
+            ) : nil
+
+        if let maskImage {
+            // this is expensive! and maybe worthless!
+            let avgFrameDifference = averageBrightness(maskImage) ?? 0
+            defer { prevAverageBrightness = avgFrameDifference }
+            let diff = abs(avgFrameDifference - prevAverageBrightness)
+            self.frameDifferenceValues.append(
+                (difference: diff, frame: nil, dropped: false),
+                t: captureTimestamp
             )
-        else { return }
+            self.withMutation(keyPath: \.frameDifferenceValues) {}
+        }
 
-        // this is expensive! and maybe worthless!
-        let avgFrameDifference = averageBrightness(maskImage) ?? 0
-        defer { prevAverageBrightness = avgFrameDifference }
-        let diff = abs(avgFrameDifference - prevAverageBrightness)
-        self.frameDifferenceValues.append(
-            (difference: diff, frame: nil, dropped: false),
-            t: captureTimestamp
-        )
-        self.withMutation(keyPath: \.frameDifferenceValues) {}
-
+        // TODO: make a clone of displayFrame
         let displayFrame = getDisplayFrame(frame: inputFrame, mask: maskImage)
 
-        minFilter.reset()
-        maxFilter.reset()
+        defer {
+            if useMinFilter {minFilter.reset()}
+            if useMaxFilter {maxFilter.reset()}
+        }
 
         guard
             let cgImage = context.createCGImage(
@@ -538,13 +545,14 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
 
-        let reason = CMGetAttachment(
-            sampleBuffer,
-            key: kCMSampleBufferAttachmentKey_DroppedFrameReason,
-            attachmentModeOut: nil
-        )
-        print(
-            "reason \(String(describing: reason))"
-        )
+//        let reason = CMGetAttachment(
+//            sampleBuffer,
+//            key: kCMSampleBufferAttachmentKey_DroppedFrameReason,
+//            attachmentModeOut: nil
+//        )
+//        // TODO: if frame was late, print how late
+//        print(
+//            "reason \(String(describing: reason))"
+//        )
     }
 }

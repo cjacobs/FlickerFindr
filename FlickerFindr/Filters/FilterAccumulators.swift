@@ -13,7 +13,7 @@ import SwiftUI
 
 class FilterAccumulator<FilterType: CIBinaryFilter> {
     private var accumulator: CIImageAccumulator? = nil
-    private var clear = true
+    private var shouldClear = true
     let filter: FilterType = FilterType()
     var context: CIContext
 
@@ -22,43 +22,46 @@ class FilterAccumulator<FilterType: CIBinaryFilter> {
     }
 
     func reset() {
+        print("reset")
         accumulator?.clear()
-        clear = true
+        shouldClear = true
     }
 
     var outputImage: CIImage? {
-        accumulator?.image()
+        print("retimg")
+        return accumulator?.image()
     }
 
-    @discardableResult func processFrame(frame: CIImage) -> CIImage {
+    // adds a new frame
+    func processFrame(frame: CIImage) {
         if accumulator == nil {
             accumulator = CIImageAccumulator(
                 extent: frame.extent,
                 format: context.workingFormat
             )
-            clear = true
+            print("init accum")
+            shouldClear = true
         }
 
         guard let accumulator else {
-            print("no accumulator!")
-            return frame
+            fatalError("no accumulator!")
         }
 
-        if clear {
+        if shouldClear {
+            print("clearframe")
             accumulator.setImage(frame)
-            print("first frame")
-            clear = false
-            return frame
+            shouldClear = false
+            return
         }
 
         filter.inputImage1 = frame
         filter.inputImage2 = accumulator.image()
         guard let output = filter.outputImage else {
             print("failed")
-            return frame
+            return
         }
         self.accumulator?.setImage(output)
-        return output
+        print("setinput")
     }
 }
 
