@@ -23,18 +23,15 @@ struct HistogramView: View {
         VStack {
             // TODO: find better defaults for range and numBins
             // TODO: use a moving average of max value for range upper bound
-            let domain = 0.0...1.0
+            let domain = 0.0...1.0 // TODO: allow clamping to smaller range (e.g. 0.0...0.2)
             let numBins = 20
-            let range = 0.0...0.2
             let histogram = Histogram<Float>(
                 data: rawData,
                 domain: domain,
-                numBins: numBins,
-                range: range
+                numBins: numBins
             )
             histogram.setup()
-            let binWidth =
-                (range.upperBound - range.lowerBound) / Double(numBins)
+            let binWidth = histogram.binWidth
 
             // TODO: use NumberBins for histogram (if we're only using it for display)
 
@@ -42,7 +39,7 @@ struct HistogramView: View {
                 return BarMark(
                     x: .value(
                         "Image Diff",
-                        range.lowerBound + Double(value.offset) * binWidth
+                        domain.lowerBound + Double(value.offset) * binWidth
                     ),
                     y: .value("Count", value.element)
                 )
