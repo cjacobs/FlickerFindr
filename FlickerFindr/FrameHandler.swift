@@ -42,7 +42,8 @@ enum MaskDisplay: String, CaseIterable, Identifiable {
 
     private var chunkFrameIndex = 0
     var framesPerUpdate = 8
-
+    var frameBuffer = RingBuffer<CGImage>()
+    
     private var prevCapturedFrame: CIImage? = nil
     private var prevProcessedFrame: CIImage? = nil
     private var prevDisplayFrame: CIImage? = nil
@@ -59,6 +60,7 @@ enum MaskDisplay: String, CaseIterable, Identifiable {
     var useMask: Bool {
         maskDisplayType != .none
     }
+    var isRecording: Bool = false
 
     var currentDevice: AVCaptureDevice? = nil
 
@@ -128,7 +130,15 @@ enum MaskDisplay: String, CaseIterable, Identifiable {
             self.withMutation(keyPath: \.isRunning) {}
         }
     }
+    
+    func startRecording() {
+        isRecording = true
+    }
 
+    func stopRecording() {
+        isRecording = false
+    }
+    
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:  // The user has previously granted access to the camera.
@@ -462,7 +472,16 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         else { return }
 
         let inputFrame = CIImage(cvPixelBuffer: imageBuffer)
-
+        
+        if (isRecording) {
+            let cgImage = context.createCGImage(
+                inputFrame,
+                from: inputFrame.extent
+            )
+            if let cgImage {
+                frameBuffer.add(cgImage)
+            }
+        }
         defer { self.prevCapturedFrame = inputFrame }
 
         let processedFrame = preprocessFrame(

@@ -22,6 +22,15 @@ struct ControlsView: View {
             }
             .disabled(!isRunning)
             Spacer()
+            Button("record", systemImage: "record.circle") {
+                model.startRecording()
+            }
+            .disabled(model.isRecording)
+            Button("stoprecord", systemImage: "record.circle.filled") {
+                model.stopRecording()
+            }
+            .disabled(!model.isRecording)
+            Spacer()
             Button("play", systemImage: "play.circle") {
                 model.run()
             }
