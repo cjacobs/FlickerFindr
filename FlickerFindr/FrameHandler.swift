@@ -42,7 +42,7 @@ enum MaskDisplay: String, CaseIterable, Identifiable {
 
     private var chunkFrameIndex = 0
     var framesPerUpdate = 8
-    var frameBuffer = RingBuffer<CGImage>()
+    var frameBuffer = RingBuffer<CGImage>(capacity: 8, defaultValue: nil)
     
     private var prevCapturedFrame: CIImage? = nil
     private var prevProcessedFrame: CIImage? = nil

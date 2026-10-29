@@ -25,7 +25,7 @@ class RingBuffer<T> {
     }
     
     func add(_ element: T) {
-        buffer[currentIndex] = element
+        buffer.insert(element, at: currentIndex)
         currentIndex = (currentIndex + 1) % capacity
     }
     

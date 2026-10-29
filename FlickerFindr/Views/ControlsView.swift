@@ -11,7 +11,10 @@ import SwiftUI
 struct ControlsView: View {
     @Bindable var model: FrameHandler
     @Binding var isRunning: Bool
+    @Binding var isShowingSlideshow: Bool
     @State private var cameraSelection: AVCaptureDevice? = nil
+
+    var showSlideshow = false
 
     var body: some View {
         Text("Controls")
@@ -22,17 +25,22 @@ struct ControlsView: View {
             }
             .disabled(!isRunning)
             Spacer()
-            Button("record", systemImage: "record.circle") {
-                model.startRecording()
+            if model.isRecording {
+                Button("stoprecord", systemImage: "record.circle.filled") {
+                    model.stopRecording()
+                }
+            } else {
+                Button("record", systemImage: "record.circle") {
+                    model.startRecording()
+                }
             }
-            .disabled(model.isRecording)
-            Button("stoprecord", systemImage: "record.circle.filled") {
-                model.stopRecording()
-            }
-            .disabled(!model.isRecording)
             Spacer()
             Button("play", systemImage: "play.circle") {
                 model.run()
+            }
+            Spacer()
+            Button("view") {
+                isShowingSlideshow.toggle()
             }
             .disabled(isRunning)
         }
@@ -41,7 +49,11 @@ struct ControlsView: View {
             Section(header: Text("Filtering controls")) {
                 HStack {
                     Text("update period")
-                    Slider(value: .convert($model.framesPerUpdate), in: 1...8, step: 1)
+                    Slider(
+                        value: .convert($model.framesPerUpdate),
+                        in: 1...8,
+                        step: 1
+                    )
 
                 }
                 Toggle("min filt", isOn: $model.useMinFilter)

@@ -11,11 +11,11 @@ import SwiftUI
 struct ContentView: View {
     @State private var model = FrameHandler()
     @State private var isShowingControls = true
+    @State private var isShowingSlideshow = false
 
     var body: some View {
 
         NavigationStack {
-
             VStack {
                 FrameView(image: model.frame)
                     .onAppear { model.start() }
@@ -29,7 +29,7 @@ struct ContentView: View {
                     .foregroundStyle(.white)
             }
             .sheet(isPresented: $isShowingControls) {
-                ControlsView(model: model, isRunning: $model.isRunning)
+                ControlsView(model: model, isRunning: $model.isRunning, isShowingSlideshow: $isShowingSlideshow)
                     .background(
                         .white.opacity(0.5)
                     )
@@ -38,6 +38,11 @@ struct ContentView: View {
                     .presentationDragIndicator(.visible)
                     .interactiveDismissDisabled()
                     .presentationBackground(alignment: .bottomTrailing) {Color.blue}
+            }
+            .overlay(alignment:.top) {
+                if isShowingSlideshow {
+                    SlideshowView(frames: Array<CGImage>(model.frameBuffer.data), isShowingSlideshow: $isShowingSlideshow)
+                }
             }
 
         }
